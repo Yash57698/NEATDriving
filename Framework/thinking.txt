@@ -1,0 +1,7 @@
+Classes:
+	GOD
+	NN
+	Node
+
+GOD should have access to everything. So when GOD is created, GOD should have all the initial neural networks in it.
+So GOD is told to make a certain number of neural networks. He should have an initial number given, what number initial connections it should have.
