@@ -67,10 +67,10 @@ class NN(torch.nn.Module):
 		connections = genome.connections
 
 		for conn in connections:
-			conn.weight = torch.tensor(conn.weight, require_grad=True)
+			conn.weight = torch.nn.Parameter(torch.tensor([conn.weight], dtype=torch.float64), requires_grad=True)
 
 		for node in genome.nodes:
-			node.bias = torch.tensor(node.bias, require_grad=True)
+			node.bias = torch.nn.Parameter(torch.tensor([node.bias], dtype=torch.float64), requires_grad=True)
 
 		revadjacencylist = {}
 		for node in nodes:
@@ -97,17 +97,22 @@ class NN(torch.nn.Module):
 			if node.computed:
 				return node.activation
 			
-			node.activation = 0
+			node.activation = torch.Tensor([0.0])
+			print(self.revadjacencylist[node.id])
 			for conn in self.revadjacencylist[node.id]:
 				if conn.enabled:
 					node.activation += get_activation(conn.IN) * conn.weight
+					# print(conn.IN.activation,conn.weight)
 			node.activation += node.bias
-			node.activation = Globals.activations[node.activationtype](node.activation)
+			# node.activation = Globals.activations[node.activationtype](node.activation)
+
 			node.computed = True
 			return node.activation
 
 		for node in self.genome.nodes:
 			if(node.type == Globals.Type.OUTPUT):
 				get_activation(node)
+
+		return [self.genome.nodes[i].activation for i in range(len(self.genome.nodes)) if self.genome.nodes[i].type == Globals.Type.OUTPUT]
 
 

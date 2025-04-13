@@ -24,11 +24,11 @@ class GOD:
 			GOD said, "Let there be edges!"
 		'''
 		for i in range(len(genome.nodes)):
-			for j in range(len(genome.nodes)):
-				if i != j:
-					if(j<i):
-						j,i = i,j
-					genome.connections.append(ConnectGene(NN.nodes[i], NN.nodes[j], 1, True, globals.innovation_number))
+			for j in range(i+1,len(genome.nodes)):
+				if (genome.nodes[i].type == Globals.Type.INPUT and genome.nodes[j].type == Globals.Type.OUTPUT) or \
+				   (genome.nodes[i].type == Globals.Type.HIDDEN and genome.nodes[j].type == Globals.Type.HIDDEN) or \
+				   (genome.nodes[i].type == Globals.Type.HIDDEN and genome.nodes[j].type == Globals.Type.OUTPUT):
+					genome.connections.append(ConnectGene(genome.nodes[i], genome.nodes[j], 1, True, globals.innovation_number))
 					globals.innovation_number += 1
 
 	def mutate_add_node(globals: Globals, genome: Genome):
