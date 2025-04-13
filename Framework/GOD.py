@@ -1,5 +1,5 @@
 from utils import Globals
-from NN import NN, ConnectGenes
+from NN import NN, ConnectGene, Genome
 
 class GOD:
 	'''
@@ -8,51 +8,53 @@ class GOD:
 		He will be the one who mutates the neural networks.
 		He will be the one who lets them have sex.
 	'''	
-	def create_initial_NNs(self, globals: Globals):
+	def create_initial_genomes(globals: Globals):
 		'''
 			GOD said, "Let there be NNs!".
 		'''
 		for i in range(globals.population):
 			# NNs should create their nodes for now
 			if i < globals.input_features:
-				globals.NNs.append(NN(globals))
+				globals.genomes.append(Genome(globals))
 			else:
-				globals.NNs.append(NN(globals))
+				globals.genomes.append(Genome(globals))
 
-	def mutate_add_connection(self, globals: Globals, NN: NN):
+	def mutate_add_connection(globals: Globals, genome: Genome):
 		'''
 			GOD said, "Let there be edges!"
 		'''
-		for i in range(len(NN.nodes)):
-			for j in range(len(NN.nodes)):
+		for i in range(len(genome.nodes)):
+			for j in range(len(genome.nodes)):
 				if i != j:
-					NN.connections.append(ConnectGenes(NN.nodes[i].id, NN.nodes[j].id, 0, True, globals.innovation_number))
+					if(j<i):
+						j,i = i,j
+					genome.connections.append(ConnectGene(NN.nodes[i], NN.nodes[j], 1, True, globals.innovation_number))
 					globals.innovation_number += 1
 
-	def mutate_add_node(self, globals: Globals, NN: NN):
+	def mutate_add_node(globals: Globals, genome: Genome):
 		'''
 			GOD said, "Let there be nodes!"
 		'''
 		pass
 
-	def mutate_weight(self, globals: Globals, NN: NN):
+	def mutate_weight(globals: Globals, genome: Genome):
 		'''
 			GOD said, "Let there be change in weight!"
 		'''
 		pass
 
-	def mutate(self, globals: Globals, NN: NN, kind: int):
+	def mutate(globals: Globals, genome: Genome, kind: int):
 		'''
 			GOD said, "Let there be mutation!"
 		'''
 		if kind == Globals.Mutation.EDGE:
-			self.mutate_add_connection(globals, NN)
+			GOD.mutate_add_connection(globals, genome)
 		elif kind == Globals.Mutation.NODE:
-			self.mutate_add_node(globals, NN)
+			GOD.mutate_add_node(globals, genome)
 		elif kind == Globals.Mutation.WEIGHT:
-			self.mutate_weight(globals, NN)
+			GOD.mutate_weight(globals, genome)
 
-	def have_sex(self, globals: Globals, NN1: NN, NN2: NN):
+	def let_there_be_sex(self, globals: Globals, genome1: Genome, genome2: Genome):
 		'''
 			GOD said, "Let there be sex!"
 		'''

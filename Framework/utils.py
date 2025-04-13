@@ -1,11 +1,11 @@
 from enum import Enum
-
+from activations import *
 	
 class Globals:
 	'''
 		All the global structure required by GOD
 	'''
-	class Layer(Enum):
+	class Type(Enum):
 		INPUT = 0
 		HIDDEN = 1
 		OUTPUT = 2
@@ -15,12 +15,19 @@ class Globals:
 		NODE = 1
 		WEIGHT = 2
 
-	def __init__(self, input_features: int, output_features: int, initial_NNs: int):
+	class Activation(Enum):
+		SIGMOID = 0
+		RELU = 1
+	
+	activations = [sigmoid_activation,relu_activation]
+
+	def __init__(self, input_features: int, output_features: int, initial_genomes: int):
 		self.input_features = input_features
 		self.output_features = output_features
 		self.map = {}
 		self.innovation_number = 0
-		self.NNs = []
+		self.genomes = []
 		self.population = 0
 		self.nodes = []
-		self.population = initial_NNs
+		self.population = initial_genomes
+		
