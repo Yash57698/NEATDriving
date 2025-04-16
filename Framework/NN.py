@@ -63,7 +63,6 @@ class NN(torch.nn.Module):
 		super(NN, self).__init__()
 
 		self.genome = genome
-		nodes = genome.nodes
 		connections = genome.connections
 
 		for conn in connections:
@@ -73,7 +72,7 @@ class NN(torch.nn.Module):
 			node.bias = torch.nn.Parameter(torch.tensor([node.bias], dtype=torch.float64), requires_grad=True)
 
 		revadjacencylist = {}
-		for node in nodes:
+		for node in genome.nodes:
 			revadjacencylist[node.id] = []
 
 		for connection in connections:

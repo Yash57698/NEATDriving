@@ -24,7 +24,8 @@ class Globals:
 	def __init__(self, input_features: int, output_features: int, initial_genomes: int):
 		self.input_features = input_features
 		self.output_features = output_features
-		self.map = {}
+		self.connection_map = {}
+		self.node_map = {}
 		self.innovation_number = 0
 		self.genomes = []
 		self.population = 0
