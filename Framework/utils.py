@@ -26,7 +26,7 @@ class Globals:
 		self.output_features = output_features
 		self.connection_map = {}
 		self.node_map = {}
-		self.innovation_number = 0
+		self.innov_num = 0
 		self.genomes = []
 		self.population = 0
 		self.nodes = []

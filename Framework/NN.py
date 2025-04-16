@@ -137,7 +137,7 @@ class NN(torch.nn.Module):
 				return node.activation
 			
 			node.activation = torch.Tensor([0.0])
-			print(self.revadjacencylist[node.id])
+			# print(self.revadjacencylist[node.id])
 			for conn in self.revadjacencylist[node.id]:
 				if conn.enabled:
 					node.activation += get_activation(conn.IN) * conn.weight

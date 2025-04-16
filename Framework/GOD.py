@@ -28,14 +28,16 @@ class GOD:
 		done = False
 		while not done:
 			node1, node2 = random.sample(genome.nodes, 2)
-			if (node1.id, node2.id) in globals.map: # If these nodes have a innov number already
+			if ((node1.type == Globals.Type.OUTPUT and node2.type == Globals.Type.OUTPUT) or (node1.type == Globals.Type.INPUT and node2.type == Globals.Type.INPUT)):
+				continue
+			if (node1.id, node2.id) in globals.connection_map: # If these nodes have a innov number already
 				if (node1.id, node2.id) in [(c.IN.id, c.OUT.id) for c in genome.connections]: # If these nodes have a connection already
 					continue
 				genome.connections.append(ConnectGene(node1, node2, weight, True, globals.map[(node1.id, node2.id)]))
 			else:
 				globals.innov_num += 1 # Create a new innov number
 				genome.connections.append(ConnectGene(node1, node2, weight, True, globals.innov_num))
-				globals.map[(node1.id, node2.id)] = globals.innov_num
+				globals.connection_map[(node1.id, node2.id)] = globals.innov_num
 			done = True
 
 	def mutate_add_node(globals: Globals, genome: Genome):

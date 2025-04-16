@@ -9,6 +9,10 @@ my_creature = Universe.genomes[0]
 GOD.mutate_add_connection(Universe, my_creature)
 
 my_creature.draw_network()
+GOD.mutate_add_connection(Universe, my_creature)
+# GOD.mutate_add_node(Universe, my_creature)
+# GOD.mutate_add_node(Universe, my_creature)
+my_creature.draw_network()
 
 my_creaturenn = NN(my_creature)
 
