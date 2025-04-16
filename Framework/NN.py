@@ -1,5 +1,8 @@
 from utils import Globals
 import torch
+import networkx as nx
+import matplotlib.pyplot as plt
+
 class Node:
 	'''
 		These are the nodes/neurons in the neural network.
@@ -49,6 +52,43 @@ class Genome:
 			else:
 				self.nodes.append(Node(i, True, 0, globals.Type.OUTPUT))
 		self.connections = []
+
+	def draw_network(self):
+		neurons = [node.id for node in self.nodes]
+		input_neurons = [node.id for node in self.nodes if node.type == Globals.Type.INPUT]
+		output_neurons = [node.id for node in self.nodes if node.type == Globals.Type.OUTPUT]
+		connections = [(conn.IN.id, conn.OUT.id) for conn in self.connections]
+		G = nx.DiGraph()
+		G.add_nodes_from(neurons)
+		G.add_edges_from(connections)
+
+		# Initialize spring layout for base layout
+		pos = nx.spring_layout(G, seed=42)
+
+		hidden_neurons = [n for n in neurons if n not in input_neurons and n not in output_neurons]
+
+		# Spread inputs vertically on the left (x = -1)
+		for i, n in enumerate(sorted(input_neurons)):
+			pos[n] = (-1, 1 - 2 * i / max(len(input_neurons) - 1, 1))
+
+		# Spread outputs vertically on the right (x = 1)
+		for i, n in enumerate(sorted(output_neurons)):
+			pos[n] = (1, 1 - 2 * i / max(len(output_neurons) - 1, 1))
+
+		# Keep hidden neurons where spring_layout put them, but constrain x to center
+		for n in hidden_neurons:
+			pos[n] = (0, pos[n][1])
+
+		plt.figure(figsize=(10, 7))
+		nx.draw_networkx_nodes(G, pos, node_size=1500, node_color='lightblue')
+		nx.draw_networkx_edges(G, pos, edge_color='gray', arrows=True)
+		nx.draw_networkx_labels(G, pos, font_size=12, font_weight='bold')
+		plt.title("Neural Network Layout (Inputs Left, Outputs Right)")
+		plt.axis('off')
+
+		plt.savefig("neural_networks.png")
+		plt.show()
+		
 
 
 class NN(torch.nn.Module):
@@ -113,5 +153,6 @@ class NN(torch.nn.Module):
 				get_activation(node)
 
 		return [self.genome.nodes[i].activation for i in range(len(self.genome.nodes)) if self.genome.nodes[i].type == Globals.Type.OUTPUT]
+
 
 

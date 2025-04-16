@@ -8,6 +8,7 @@ GOD.create_initial_genomes(Universe)
 my_creature = Universe.genomes[0]
 GOD.mutate_add_connection(Universe, my_creature)
 
+my_creature.draw_network()
 
 my_creaturenn = NN(my_creature)
 
