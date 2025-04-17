@@ -46,50 +46,124 @@ class Genome:
 		self.input_features = globals.input_features
 		self.output_features = globals.output_features
 		self.nodes = []
-		for i in range(1, self.input_features + self.output_features + 1):
-			if i <= self.input_features:
+		for i in range(self.input_features + self.output_features):
+			if i < self.input_features:
 				self.nodes.append(Node(i, True, 0, globals.Type.INPUT))
 			else:
 				self.nodes.append(Node(i, True, 0, globals.Type.OUTPUT))
 		self.connections = []
 
+	# def draw_network(self):
+	# 	neurons = [node.id for node in self.nodes]
+	# 	input_neurons = [node.id for node in self.nodes if node.type == Globals.Type.INPUT]
+	# 	output_neurons = [node.id for node in self.nodes if node.type == Globals.Type.OUTPUT]
+	# 	connections = [(conn.IN.id, conn.OUT.id) for conn in self.connections if conn.enabled]
+	# 	G = nx.DiGraph()
+	# 	G.add_nodes_from(neurons)
+	# 	G.add_edges_from(connections)
+
+	# 	# Initialize spring layout for base layout
+	# 	pos = nx.kamada_kawai_layout(G)
+
+	# 	hidden_neurons = [n for n in neurons if n not in input_neurons and n not in output_neurons]
+
+	# 	# Spread inputs vertically on the left (x = -1)
+	# 	for i, n in enumerate(sorted(input_neurons)):
+	# 		pos[n] = (-1, 1 - 2 * i / max(len(input_neurons) - 1, 1))
+
+	# 	# Spread outputs vertically on the right (x = 1)
+	# 	for i, n in enumerate(sorted(output_neurons)):
+	# 		pos[n] = (1, 1 - 2 * i / max(len(output_neurons) - 1, 1))
+
+	# 	plt.figure(figsize=(10, 7))
+	# 	nx.draw_networkx_nodes(G, pos, node_size=1500, node_color='lightblue')
+	# 	nx.draw_networkx_edges(G, pos, edge_color='gray', arrows=True)
+	# 	nx.draw_networkx_labels(G, pos, font_size=12, font_weight='bold')
+	# 	plt.title("Neural Network Layout (Inputs Left, Outputs Right)")
+	# 	plt.axis('off')
+
+	# 	plt.savefig("neural_networks.png")
+	# 	plt.show()
 	def draw_network(self):
+		import collections
+
 		neurons = [node.id for node in self.nodes]
 		input_neurons = [node.id for node in self.nodes if node.type == Globals.Type.INPUT]
 		output_neurons = [node.id for node in self.nodes if node.type == Globals.Type.OUTPUT]
-		connections = [(conn.IN.id, conn.OUT.id) for conn in self.connections]
+		hidden_neurons = [node.id for node in self.nodes if node.id not in input_neurons + output_neurons]
+
+		connections = [(conn.IN.id, conn.OUT.id) for conn in self.connections if conn.enabled]
+
 		G = nx.DiGraph()
 		G.add_nodes_from(neurons)
 		G.add_edges_from(connections)
 
-		# Initialize spring layout for base layout
-		pos = nx.spring_layout(G, seed=42)
+		# --- Step 1: Compute topological depth ---
+		def compute_depths():
+			depths = {nid: 0 for nid in neurons}
+			visited = set()
 
-		hidden_neurons = [n for n in neurons if n not in input_neurons and n not in output_neurons]
+			def dfs(nid, depth):
+				if nid in visited:
+					depths[nid] = max(depths[nid], depth)
+				else:
+					visited.add(nid)
+					depths[nid] = depth
+				for _, tgt in G.edges(nid):
+					dfs(tgt, depth + 1)
 
-		# Spread inputs vertically on the left (x = -1)
-		for i, n in enumerate(sorted(input_neurons)):
-			pos[n] = (-1, 1 - 2 * i / max(len(input_neurons) - 1, 1))
+			for nid in input_neurons:
+				dfs(nid, 0)
 
-		# Spread outputs vertically on the right (x = 1)
-		for i, n in enumerate(sorted(output_neurons)):
-			pos[n] = (1, 1 - 2 * i / max(len(output_neurons) - 1, 1))
+			return depths
 
-		# Keep hidden neurons where spring_layout put them, but constrain x to center
-		for n in hidden_neurons:
-			pos[n] = (0, pos[n][1])
+		depths = compute_depths()
 
-		plt.figure(figsize=(10, 7))
-		nx.draw_networkx_nodes(G, pos, node_size=1500, node_color='lightblue')
-		nx.draw_networkx_edges(G, pos, edge_color='gray', arrows=True)
-		nx.draw_networkx_labels(G, pos, font_size=12, font_weight='bold')
-		plt.title("Neural Network Layout (Inputs Left, Outputs Right)")
+		# --- Step 2: Set X coordinates ---
+		pos = {}
+
+		# Inputs: always at x = -1
+		for nid in input_neurons:
+			pos[nid] = (-1.0, 0)
+
+		# Outputs: always at x = 1
+		for nid in output_neurons:
+			pos[nid] = (1.0, 0)
+
+		# Hidden: strictly between -1 and 1
+		if hidden_neurons:
+			min_d = min(depths[nid] for nid in hidden_neurons)
+			max_d = max(depths[nid] for nid in hidden_neurons)
+			range_d = max(max_d - min_d, 1)
+
+			for nid in hidden_neurons:
+				# Normalize and squeeze into (-1, 1)
+				normalized = (depths[nid] - min_d) / range_d
+				x = -0.9 + 1.8 * normalized  # ensures x in (-1, 1)
+				pos[nid] = (x, 0)
+
+		# --- Step 3: Assign Y coordinates by layering nodes vertically at each X ---
+		x_buckets = collections.defaultdict(list)
+		for nid, (x, _) in pos.items():
+			x_buckets[x].append(nid)
+
+		for x, nids in x_buckets.items():
+			n = len(nids)
+			for i, nid in enumerate(sorted(nids)):
+				y = 1 - 2 * i / max(n - 1, 1)
+				pos[nid] = (x, y)
+
+		# --- Step 4: Draw ---
+		plt.figure(figsize=(12, 8))
+		nx.draw_networkx_nodes(G, pos, node_size=1000, node_color='skyblue')
+		nx.draw_networkx_edges(G, pos, edge_color='gray', arrows=True, arrowstyle='->', arrowsize=20)
+		nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
+
+		plt.title("Neural Network Layout (Inputs Left, Outputs Right, Hidden Strictly Between)")
 		plt.axis('off')
-
+		plt.tight_layout()
 		plt.savefig("neural_networks.png")
 		plt.show()
-		
-
 
 class NN(torch.nn.Module):
 	'''

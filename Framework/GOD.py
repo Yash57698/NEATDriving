@@ -28,7 +28,7 @@ class GOD:
 		done = False
 		while not done:
 			node1, node2 = random.sample(genome.nodes, 2)
-			if ((node1.type == Globals.Type.OUTPUT and node2.type == Globals.Type.OUTPUT) or (node1.type == Globals.Type.INPUT and node2.type == Globals.Type.INPUT)):
+			if ((node1.type == Globals.Type.OUTPUT and node2.type == Globals.Type.OUTPUT) or (node1.type == Globals.Type.INPUT and node2.type == Globals.Type.INPUT) or (node1.type == Globals.Type.OUTPUT) or (node2.type == Globals.Type.INPUT)):
 				continue
 			if (node1.id, node2.id) in globals.connection_map: # If these nodes have a innov number already
 				if (node1.id, node2.id) in [(c.IN.id, c.OUT.id) for c in genome.connections]: # If these nodes have a connection already
@@ -48,30 +48,34 @@ class GOD:
 			return
 		
 		done = False
-		while done:
+		while not done:
 			conn = random.choice(genome.connections)
-			if conn.enabled == False:
+			if not conn.enabled:
 				continue
-			if globals.node_map[conn.IN.id, conn.OUT.id]:
+			if (conn.IN.id, conn.OUT.id) in globals.node_map:
 				new_node = globals.node_map[conn.IN.id, conn.OUT.id]
+				print("adding a node between ", conn.IN.id, "and", conn.OUT.id)
 				genome.nodes.append(new_node)
-				conn1 = ConnectGene(conn.IN, new_node, 1, True, globals.node_innov_num)
-				conn2 = ConnectGene(new_node, conn.OUT, conn.weight, True, globals.node_innov_num)
+				conn1 = ConnectGene(conn.IN, new_node, 1, True, globals.innov_num)
+				conn2 = ConnectGene(new_node, conn.OUT, conn.weight, True, globals.innov_num)
 				genome.connections.append(conn1)
 				genome.connections.append(conn2)
 				conn.enabled = False
 				done = True
-			node = Node(len(globals.nodes), True, random.normalvariate(0, 1), Globals.Type.HIDDEN)
-			genome.nodes.append(node)
-			globals.innov_num += 1
-			conn1 = ConnectGene(conn.IN, node, 1, True, globals.node_innov_num)
-			globals.innov_num += 1
-			conn2 = ConnectGene(node, conn.OUT, conn.weight, True, globals.node_innov_num)
-			genome.connections.append(conn1)
-			genome.connections.append(conn2)
-			globals.node_map[(conn.IN.id, conn.OUT.id)] = node
-			conn.enabled = False
-			done = True
+			else:
+				node = Node(globals.nodes, True, random.normalvariate(0, 1), Globals.Type.HIDDEN)
+				globals.nodes += 1
+				genome.nodes.append(node)
+				print("adding a node between ", conn.IN.id, "and", conn.OUT.id)
+				globals.innov_num += 1
+				conn1 = ConnectGene(conn.IN, node, 1, True, globals.innov_num)
+				globals.innov_num += 1
+				conn2 = ConnectGene(node, conn.OUT, conn.weight, True, globals.innov_num)
+				genome.connections.append(conn1)
+				genome.connections.append(conn2)
+				globals.node_map[(conn.IN.id, conn.OUT.id)] = node
+				conn.enabled = False
+				done = True
 
 	def mutate_weight(globals: Globals, genome: Genome):
 		'''

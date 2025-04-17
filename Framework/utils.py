@@ -29,6 +29,6 @@ class Globals:
 		self.innov_num = 0
 		self.genomes = []
 		self.population = 0
-		self.nodes = []
+		self.nodes = input_features + output_features
 		self.population = initial_genomes
 		
