@@ -22,13 +22,13 @@ class Globals:
 	activations = [sigmoid_activation,relu_activation]
 
 	def __init__(self, input_features: int, output_features: int, initial_genomes: int):
+		self.current_generation = 1
 		self.input_features = input_features
 		self.output_features = output_features
 		self.connection_map = {}
 		self.node_map = {}
 		self.innov_num = 0
 		self.genomes = []
-		self.population = 0
 		self.nodes = input_features + output_features
 		self.population = initial_genomes
 		

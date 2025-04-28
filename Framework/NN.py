@@ -84,7 +84,7 @@ class Genome:
 
 	# 	plt.savefig("neural_networks.png")
 	# 	plt.show()
-	def draw_network(self):
+	def draw_network(self,name = "Network"):
 		import collections
 
 		neurons = [node.id for node in self.nodes]
@@ -162,7 +162,7 @@ class Genome:
 		plt.title("Neural Network Layout (Inputs Left, Outputs Right, Hidden Strictly Between)")
 		plt.axis('off')
 		plt.tight_layout()
-		plt.savefig("neural_networks.png")
+		plt.savefig(f"{name}.png")
 		plt.show()
 
 class NN(torch.nn.Module):
@@ -173,17 +173,17 @@ class NN(torch.nn.Module):
 		It will be used to play the game.
 		It will be used to evolve the population.
 	'''
-	def __init__(self, genome: Genome):
+	def __init__(self, genome: Genome, grad = True):
 		super(NN, self).__init__()
 
 		self.genome = genome
 		connections = genome.connections
 
 		for conn in connections:
-			conn.weight = torch.nn.Parameter(torch.tensor([conn.weight], dtype=torch.float64), requires_grad=True)
+			conn.weight = torch.nn.Parameter(torch.tensor([conn.weight], dtype=torch.float64), requires_grad=grad)
 
 		for node in genome.nodes:
-			node.bias = torch.nn.Parameter(torch.tensor([node.bias], dtype=torch.float64), requires_grad=True)
+			node.bias = torch.nn.Parameter(torch.tensor([node.bias], dtype=torch.float64), requires_grad=grad)
 
 		revadjacencylist = {}
 		for node in genome.nodes:
@@ -224,6 +224,7 @@ class NN(torch.nn.Module):
 
 		for node in self.genome.nodes:
 			if(node.type == Globals.Type.OUTPUT):
+				# print(node.id)
 				get_activation(node)
 
 		return [self.genome.nodes[i].activation for i in range(len(self.genome.nodes)) if self.genome.nodes[i].type == Globals.Type.OUTPUT]

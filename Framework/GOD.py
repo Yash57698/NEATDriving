@@ -1,6 +1,12 @@
 from utils import Globals
 from NN import NN, ConnectGene, Genome, Node
 import random
+import numpy as np
+from copy import deepcopy
+from config import *
+import sys
+sys.path.append('..')
+from Environment.main import RunRound
 
 class GOD:
 	'''
@@ -33,7 +39,7 @@ class GOD:
 			if (node1.id, node2.id) in globals.connection_map: # If these nodes have a innov number already
 				if (node1.id, node2.id) in [(c.IN.id, c.OUT.id) for c in genome.connections]: # If these nodes have a connection already
 					continue
-				genome.connections.append(ConnectGene(node1, node2, weight, True, globals.map[(node1.id, node2.id)]))
+				genome.connections.append(ConnectGene(node1, node2, weight, True, globals.connection_map[(node1.id, node2.id)]))
 			else:
 				globals.innov_num += 1 # Create a new innov number
 				genome.connections.append(ConnectGene(node1, node2, weight, True, globals.innov_num))
@@ -54,7 +60,8 @@ class GOD:
 				continue
 			if (conn.IN.id, conn.OUT.id) in globals.node_map:
 				new_node = globals.node_map[conn.IN.id, conn.OUT.id]
-				print("adding a node between ", conn.IN.id, "and", conn.OUT.id)
+				# print("adding a node between ", conn.IN.id, "and", conn.OUT.id)
+				print(new_node.id, "already exists")
 				genome.nodes.append(new_node)
 				conn1 = ConnectGene(conn.IN, new_node, 1, True, globals.innov_num)
 				conn2 = ConnectGene(new_node, conn.OUT, conn.weight, True, globals.innov_num)
@@ -63,17 +70,18 @@ class GOD:
 				conn.enabled = False
 				done = True
 			else:
-				node = Node(globals.nodes, True, random.normalvariate(0, 1), Globals.Type.HIDDEN)
+				new_node = Node(globals.nodes, True, random.normalvariate(0, 1), Globals.Type.HIDDEN)
 				globals.nodes += 1
-				genome.nodes.append(node)
-				print("adding a node between ", conn.IN.id, "and", conn.OUT.id)
+				genome.nodes.append(new_node)
+				# print("adding a node between ", conn.IN.id, "and", conn.OUT.id)
+				print("new node id: ", new_node.id)
 				globals.innov_num += 1
-				conn1 = ConnectGene(conn.IN, node, 1, True, globals.innov_num)
+				conn1 = ConnectGene(conn.IN, new_node, 1, True, globals.innov_num)
 				globals.innov_num += 1
-				conn2 = ConnectGene(node, conn.OUT, conn.weight, True, globals.innov_num)
+				conn2 = ConnectGene(new_node, conn.OUT, conn.weight, True, globals.innov_num)
 				genome.connections.append(conn1)
 				genome.connections.append(conn2)
-				globals.node_map[(conn.IN.id, conn.OUT.id)] = node
+				globals.node_map[(conn.IN.id, conn.OUT.id)] = new_node
 				conn.enabled = False
 				done = True
 
@@ -97,33 +105,75 @@ class GOD:
 		elif kind == Globals.Mutation.WEIGHT:
 			GOD.mutate_weight(globals, genome)
 
-	def let_there_be_sex(self, globals: Globals, genome1: Genome, genome2: Genome):
+	def let_there_be_sex(globals: Globals, genome1: Genome, genome2: Genome):
 		'''
 			GOD said, "Let there be sex!"
 		'''
-		sorted(genome1.connections, key = lambda c: c.innov_num)
-		sorted(genome2.connections, key = lambda c: c.innov_num)
+		sorted(genome1.connections, key = lambda c: c.innov)
+		sorted(genome2.connections, key = lambda c: c.innov)
 		genome = Genome(globals)
 		genome.nodes = list(set(genome1.nodes).union(set(genome2.nodes)))
 		i = 0
 		j = 0
 		while i < len(genome1.connections) and j < len(genome2.connections):
-			if genome1.connections[i].innov_num == genome2.connections[j].innov_num:
+			# print("i: ", i, "j: ", j, "len1: ", len(genome1.connections), "len2: ", len(genome2.connections), "innov1: ", genome1.connections[i].innov, "innov2: ", genome2.connections[j].innov)
+			if genome1.connections[i].innov == genome2.connections[j].innov:
 				genome.connections.append(
-					ConnectGene(genome1.connections[i].IN, genome1.connections[i].OUT, genome1.connections[i].weight, genome1.connections[i].enabled and genome2.connections[i].enabled, genome1.connections[i].innov_num)
+					ConnectGene(genome1.connections[i].IN, genome1.connections[i].OUT, genome1.connections[i].weight, genome1.connections[i].enabled and genome2.connections[i].enabled, genome1.connections[i].innov)
 				)
 				i += 1
 				j += 1
-			elif genome1.connections[i].innov_num < genome2.connections[j].innov_num:
+			elif genome1.connections[i].innov < genome2.connections[j].innov:
 				genome.connections.append(
-					ConnectGene(genome1.connections[i].IN, genome1.connections[i].OUT, genome1.connections[i].weight, genome1.connections[i].enabled, genome1.connections[i].innov_num)
+					ConnectGene(genome1.connections[i].IN, genome1.connections[i].OUT, genome1.connections[i].weight, genome1.connections[i].enabled, genome1.connections[i].innov)
 				)
 				i += 1
-			elif genome1.connections[i].innov_num > genome2.connections[j].innov_num:
+			elif genome1.connections[i].innov > genome2.connections[j].innov:
 				genome.connections.append(
-					ConnectGene(genome2.connections[i].IN, genome2.connections[i].OUT, genome2.connections[i].weight, genome2.connections[i].enabled, genome2.connections[i].innov_num)
+					ConnectGene(genome2.connections[j].IN, genome2.connections[j].OUT, genome2.connections[j].weight, genome2.connections[j].enabled, genome2.connections[j].innov)
 				)
 				j += 1
-		globals.genomes.append(genome)
+		while i < len(genome1.connections):
+			genome.connections.append(
+				ConnectGene(genome1.connections[i].IN, genome1.connections[i].OUT, genome1.connections[i].weight, genome1.connections[i].enabled, genome1.connections[i].innov)
+			)
+			i += 1
+		while j < len(genome2.connections):
 			
+			genome.connections.append(
+				ConnectGene(genome2.connections[j].IN, genome2.connections[j].OUT, genome2.connections[j].weight, genome2.connections[j].enabled, genome2.connections[j].innov)
+			)
+			j += 1	
+		return genome
+			
+	def Evaluate_and_Mutate(globals: Globals):
+		'''
+			GOD said, "Let there be evaluation!"
+		'''
+		parentGeneration = []
+		for (indx,genome) in enumerate(globals.genomes):
+			parentGeneration.append((RunRound(NN(genome, grad = False),globals.current_generation, id = indx),genome))	
+
+		globals.current_generation += 1		
+
+		parentGeneration.sort(reverse = True, key = lambda x: x[0])
+
+		parentGeneration[0][1].draw_network("best")
+
+		newGeneration = []
+		for i in range(int(globals.population * (1-POPULATION_TO_DESTROY))):
+			newGeneration.append(deepcopy(parentGeneration[i][1]))
+
+		to_be_mutated = random.sample(parentGeneration[:int(globals.population * (1-POPULATION_TO_DESTROY))], int(globals.population * POPULATION_TO_MUTATE))
+
+		for genome in to_be_mutated:
+			GOD.mutate(globals, genome[1], np.random.choice([Globals.Mutation.EDGE, Globals.Mutation.NODE, Globals.Mutation.WEIGHT],p=[MUTATE_CONNECTION, MUTATE_NODE, MUTATE_WEIGHT]))
 		
+		for genome in to_be_mutated:
+			newGeneration.append(deepcopy(genome[1]))
+
+		to_be_mated = random.sample(newGeneration, int(globals.population * POPULATION_TO_MATE)*2)
+		for i in range(0, len(to_be_mated), 2):
+			newGeneration.append(GOD.let_there_be_sex(globals, to_be_mated[i], to_be_mated[i+1]))
+
+		globals.genomes = newGeneration[:globals.population]

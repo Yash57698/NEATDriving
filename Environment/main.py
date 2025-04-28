@@ -1,5 +1,10 @@
+import sys
+sys.path.append('..')
 import pygame
 import math
+import torch
+from Framework.NN import NN
+import numpy as np
 
 # Initialize pygame
 pygame.init()
@@ -44,7 +49,7 @@ def car_hits_track_edges(car_pos, angle_deg):
     return False
 
 # Screen dimensions
-WIDTH, HEIGHT = 800, 750
+WIDTH, HEIGHT = 800, 850
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Drivable Rectangle")
 
@@ -82,7 +87,6 @@ def reset_game():
     points = 0
         
 # Main loop
-running = True
 def cast_ray(origin, angle_deg, max_distance=200):
     angle_rad = math.radians(angle_deg)
     dx = math.cos(angle_rad)
@@ -128,92 +132,138 @@ def get_line_intersection(p1, p2, p3, p4):
     return None
 
 
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+running = True
+slow = True
+def RunRound(creatureNN : NN,Generation = 0, framecap = 300,id = -1):
+    sys.path.append('../Environment')
+    global slow
+    global car_x, car_y, car_angle, car_speed, current_checkpoint, points
+    global track_points, checkpoints, track_color, track_width, screen, clock, font
+    global car_width, car_height, max_speed, acceleration, deceleration, turn_speed
+    global WHITE, RED, WIDTH, HEIGHT
+    global running, car_image, track_color, track_width, screen, clock, font
+    
+    reset_game()
+    frames = 0
+    forward_fames = 0
+    checkpoints_crossed = 0
+    while running:
+        frames += 1
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_s:
+                    slow = not slow
+            if event.type == pygame.QUIT:
+                running = False
 
-    keys = pygame.key.get_pressed()
-    if car_hits_track_edges((car_x, car_y), car_angle):
-        reset_game()
+        screen.fill(WHITE)
+        draw_track()
+        num_rays = 8
+        ray_length = 200
+        ray_color = (0, 255, 0)
+        Raydistances = []
+        for i in range(num_rays):
+            angle = car_angle + i * 360 / num_rays
+            origin = (car_x, car_y)
+            end_point = cast_ray(origin, angle, ray_length)
+            dist = math.hypot(end_point[0] - origin[0], end_point[1] - origin[1])
+            # Normalize distances to [0, 1] range   
+            normalized_distance = dist / ray_length
+            Raydistances.append(normalized_distance)
 
-    if keys[pygame.K_UP]:
-        car_speed = min(car_speed + acceleration, max_speed)
-    elif keys[pygame.K_DOWN]:
-        car_speed = max(car_speed - acceleration, -max_speed / 2)
-    else:
-        if car_speed > 0:
-            car_speed = max(car_speed - deceleration, 0)
-        elif car_speed < 0:
-            car_speed = min(car_speed + deceleration, 0)
+            pygame.draw.line(screen, ray_color, origin, end_point,2)
+            pygame.draw.circle(screen, (0, 0, 255), (int(end_point[0]), int(end_point[1])), 3)
+        
+        Raydistances = torch.tensor(Raydistances)
+        
+        output = torch.tensor(creatureNN(Raydistances))
+        output = torch.nn.functional.softmax(output).detach().numpy()
+        outputformatted = output
+        print(len(outputformatted))
+        dir = np.argmax(output)
+        vert = dir%3 -1
+        hori = dir//3 -1 
 
-    if keys[pygame.K_LEFT]:
-        car_angle += turn_speed * (car_speed / max_speed)
-    if keys[pygame.K_RIGHT]:
-        car_angle -= turn_speed * (car_speed / max_speed)
+        if car_hits_track_edges((car_x, car_y), car_angle) or frames > framecap:
+            # Reset the game if the car goes off track or after 1000 frames
+            return checkpoints_crossed*1000 + frames + forward_fames*10
 
-    # Update car position
-    car_x += car_speed * math.cos(math.radians(car_angle))
-    car_y -= car_speed * math.sin(math.radians(car_angle))
+        if vert == -1:
+            forward_fames += 1
+            car_speed = min(car_speed + acceleration, max_speed)
+        elif vert == 1:
+            car_speed = max(car_speed - acceleration, -max_speed / 2)
+        else:
+            if car_speed > 0:
+                car_speed = max(car_speed - deceleration, 0)
+            elif car_speed < 0:
+                car_speed = min(car_speed + deceleration, 0)
 
-    # Checkpoint crossing detection using previous and current position
-    if current_checkpoint < len(checkpoints):
-        cp_start, cp_end = checkpoints[current_checkpoint]
+        if hori == -1:
+            car_angle += turn_speed * (car_speed / max_speed)
+        if hori == 1:
+            car_angle -= turn_speed * (car_speed / max_speed)
 
-        # Get car corners
-        angle_rad = -math.radians(car_angle)
-        half_w, half_h = car_width / 2, car_height / 2
-        corners_local = [(-half_w, -half_h), (half_w, -half_h),
-                         (half_w, half_h), (-half_w, half_h)]
+        # Update car position
+        car_x += car_speed * math.cos(math.radians(car_angle))
+        car_y -= car_speed * math.sin(math.radians(car_angle))
 
-        corners_world = []
-        for dx, dy in corners_local:
-            x = car_x + dx * math.cos(angle_rad) - dy * math.sin(angle_rad)
-            y = car_y + dx * math.sin(angle_rad) + dy * math.cos(angle_rad)
-            corners_world.append((x, y))
+        # Checkpoint crossing detection using previous and current position
+        if current_checkpoint < len(checkpoints):
+            cp_start, cp_end = checkpoints[current_checkpoint]
 
-        car_edges = [(corners_world[i], corners_world[(i + 1) % 4]) for i in range(4)]
+            # Get car corners
+            angle_rad = -math.radians(car_angle)
+            half_w, half_h = car_width / 2, car_height / 2
+            corners_local = [(-half_w, -half_h), (half_w, -half_h),
+                            (half_w, half_h), (-half_w, half_h)]
 
-        # Check all car edges for crossing the current checkpoint line
-        for edge_start, edge_end in car_edges:
-            if get_line_intersection(edge_start, edge_end, cp_start, cp_end):
-                points += 1
-                current_checkpoint += 1
-                break  # Avoid counting the same checkpoint multiple times
+            corners_world = []
+            for dx, dy in corners_local:
+                x = car_x + dx * math.cos(angle_rad) - dy * math.sin(angle_rad)
+                y = car_y + dx * math.sin(angle_rad) + dy * math.cos(angle_rad)
+                corners_world.append((x, y))
 
+            car_edges = [(corners_world[i], corners_world[(i + 1) % 4]) for i in range(4)]
 
-    screen.fill(WHITE)
-    draw_track()
-    num_rays = 16
-    ray_length = 200
-    ray_color = (0, 255, 0)
-    for i in range(num_rays):
-        angle = car_angle + i * 360 / num_rays
-        origin = (car_x, car_y)
-        end_point = cast_ray(origin, angle, ray_length)
-        pygame.draw.line(screen, ray_color, origin, end_point,2)
-        pygame.draw.circle(screen, (0, 0, 255), (int(end_point[0]), int(end_point[1])), 3)
+            # Check all car edges for crossing the current checkpoint line
+            for edge_start, edge_end in car_edges:
+                if get_line_intersection(edge_start, edge_end, cp_start, cp_end):
+                    points += 1
+                    current_checkpoint += 1
+                    checkpoints_crossed += 1
+                    break  # Avoid counting the same checkpoint multiple times
 
-    car_image = pygame.image.load("car_red_1.png")
-    car_image = pygame.transform.scale(car_image, (car_width, car_height))
+        car_image = pygame.image.load("../Environment/car_red_1.png")
+        car_image = pygame.transform.scale(car_image, (car_width, car_height))
 
-    rotated_car = pygame.transform.rotate(car_image, car_angle)
-    rotated_rect = rotated_car.get_rect(center=(car_x, car_y))
-    # Draw car hitbox
-    screen.blit(rotated_car, rotated_rect.topleft)
-    for i in range(4):
-        pygame.draw.line(screen, (255, 0, 0), corners_world[i], corners_world[(i + 1) % 4], 2)
+        rotated_car = pygame.transform.rotate(car_image, car_angle)
+        rotated_rect = rotated_car.get_rect(center=(car_x, car_y))
+        # Draw car hitbox
+        screen.blit(rotated_car, rotated_rect.topleft)
+        for i in range(4):
+            pygame.draw.line(screen, (255, 0, 0), corners_world[i], corners_world[(i + 1) % 4], 2)
 
-    # Draw line checkpoints
-    for idx, (start, end) in enumerate(checkpoints):
-        color = (0, 200, 255) if idx == current_checkpoint else (180, 180, 180)
-        pygame.draw.line(screen, color, start, end, 4)
+        # Draw line checkpoints
+        for idx, (start, end) in enumerate(checkpoints):
+            color = (0, 200, 255) if idx == current_checkpoint else (180, 180, 180)
+            pygame.draw.line(screen, color, start, end, 4)
 
-    # Display checkpoint progress
-    progress_text = font.render(f"Checkpoints: {points}/{len(checkpoints)}", True, (0, 0, 0))
-    screen.blit(progress_text, (500, 10))
+        # Display checkpoint progress
+        progress_text = font.render(f"Checkpoints: {points}/{len(checkpoints)}", True, (0, 0, 0))
+        screen.blit(progress_text, (500, 10))
+        progress_text = font.render(f"Frame: {frames}/{framecap}", True, (0, 0, 0))
+        screen.blit(progress_text, (500, 50))
 
-    pygame.display.flip()
-    clock.tick(60)
+        output_text = font.render(f"Outputs: {[round(float(o),2) for o in outputformatted]}", True, (0, 0, 0))
+        screen.blit(output_text, (10, 800))
 
-pygame.quit()
+        if(Generation != 0):
+            generation_text = font.render(f"{id} of Generation: {Generation}", True, (0, 0, 0))
+            screen.blit(generation_text, (500, 750))
+
+        pygame.display.flip()
+        if slow:
+            clock.tick(60)
+
+    pygame.quit()
