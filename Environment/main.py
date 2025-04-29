@@ -134,7 +134,7 @@ def get_line_intersection(p1, p2, p3, p4):
 
 running = True
 slow = True
-def RunRound(creatureNN : NN,Generation = 0, framecap = 250,id = -1, genome = None):
+def RunRound(creatureNN : NN,Generation = 0, framecap = 250,id = -1, genome = None,speciesid = -1,species_infotext = None):
     sys.path.append('../Environment')
     global slow
     global car_x, car_y, car_angle, car_speed, current_checkpoint, points
@@ -185,7 +185,7 @@ def RunRound(creatureNN : NN,Generation = 0, framecap = 250,id = -1, genome = No
 
         if car_hits_track_edges((car_x, car_y), car_angle) or frames > framecap:
             # Reset the game if the car goes off track or after 1000 frames
-            return checkpoints_crossed*1000 + frames
+            return checkpoints_crossed*1000 + 1
 
         if vert == -1:
             forward_fames += 1
@@ -257,9 +257,15 @@ def RunRound(creatureNN : NN,Generation = 0, framecap = 250,id = -1, genome = No
         output_text = font.render(f"Outputs: {[round(float(o),2) for o in outputformatted]}", True, (0, 0, 0))
         screen.blit(output_text, (10, 800))
 
+        if(species_infotext != None):
+            texts = species_infotext.split('\n')
+            for i, text in enumerate(texts):
+                species_text = font.render(text, True, (0, 0, 0))
+                screen.blit(species_text, (800, 600 + i * 30))
+
         if(Generation != 0):
-            generation_text = font.render(f"{id} of Generation: {Generation}", True, (0, 0, 0))
-            screen.blit(generation_text, (500, 750))
+            generation_text = font.render(f"{id} in Species: {speciesid} of Generation: {Generation}", True, (0, 0, 0))
+            screen.blit(generation_text, (400, 750))
 
         if(genome != None):
             genome.draw_network(screen = screen,offset = (800,50))

@@ -7,6 +7,7 @@ from config import *
 import sys
 sys.path.append('..')
 from Environment.main import RunRound
+from config import *
 
 class GOD:
 	'''
@@ -109,6 +110,50 @@ class GOD:
 		elif kind == Globals.Mutation.WEIGHT:
 			GOD.mutate_weight(globals, genome)
 
+	def genetic_distance(genome1: Genome, genome2: Genome):
+		'''
+			GOD said, "Let there be distance!"
+		'''
+		distance = 0
+		genome1_conn = sorted(genome1.connections, key = lambda c: c.innov)
+		genome2_conn = sorted(genome2.connections, key = lambda c: c.innov)
+		N = max(len(genome1_conn), len(genome2_conn)) + 1
+		E = 0
+		D = 0
+		w1 = 0
+		w2 = 0
+		i = 0
+		j = 0
+		while i < len(genome1_conn) and j < len(genome2_conn):
+			if genome1_conn[i].innov == genome2_conn[j].innov:
+				w1 += genome1_conn[i].weight.item()
+				w2 += genome2_conn[j].weight.item()
+				i += 1
+				j += 1
+			elif genome1_conn[i].innov < genome2_conn[j].innov:
+				w1 += genome1_conn[i].weight.item()
+				D += 1
+				i += 1
+			else:
+				w2 += genome2_conn[j].weight.item()
+				D += 1
+				j += 1
+		while i < len(genome1_conn):
+			w1 += genome1_conn[i].weight.item()
+			E += 1
+			i += 1
+		while j < len(genome2_conn):
+			w2 += genome2_conn[j].weight.item()
+			E += 1
+			j += 1
+		
+		w1 /= len(genome1_conn) if len(genome1_conn) > 0 else 1
+		w2 /= len(genome2_conn) if len(genome2_conn) > 0 else 1
+
+		W = abs(w1 - w2) / max(w1, w2) if max(w1, w2) != 0 else 0
+
+		return (C1 * E + C2 * D) / N + C3 * W
+
 	def let_there_be_sex(globals: Globals, genome1: Genome, genome2: Genome):
 		'''
 			GOD said, "Let there be sex!"
@@ -162,30 +207,70 @@ class GOD:
 		'''
 			GOD said, "Let there be evaluation!"
 		'''
-		parentGeneration = []
-		for (indx,genome) in enumerate(globals.genomes):
-			parentGeneration.append((RunRound(NN(genome, grad = False),globals.current_generation, id = indx,genome=genome),genome))	
+		Representative_genome = [globals.genomes[0]]
+		for i in globals.genomes:
+			flag = False
+			for j in Representative_genome:
+				if GOD.genetic_distance(i, j) < SPECIES_THRESHOLD:
+					flag = True
+			if( not flag):
+				Representative_genome.append(i)
 
-		globals.current_generation += 1		
+		species = [[] for i in range(len(Representative_genome))]
+		for i in globals.genomes:
+			flag = False
+			for j in Representative_genome:
+				if GOD.genetic_distance(i, j) < SPECIES_THRESHOLD:
+					species[Representative_genome.index(j)].append(i)
+					flag = True
+					break
+			if not flag:
+				Representative_genome.append(i)
+				species.append([i])
 
-		parentGeneration.sort(reverse = True, key = lambda x: x[0])
-
-		# parentGeneration[0][1].draw_network("best")
+		species_fitness = [0 for i in range(len(species))]
+		specieinfotex = "No of Species :" + str(len(species)) + "\n"
+		for i in range(len(species)):
+			specieinfotex += "Species " + str(i) + " : " + str(len(species[i])) + "\n"
+		for ind,speca in enumerate(species):
+			for indx,j in enumerate(speca):
+				score = RunRound(NN(j, grad = False), globals.current_generation, genome = j,id = indx,speciesid = ind,species_infotext=specieinfotex)
+				speca[indx] = [score/len(speca), speca[indx]]
+				species_fitness[ind] += score/len(speca)
+			species[ind] = [species_fitness[ind], species[ind]]
 
 		newGeneration = []
-		for i in range(int(globals.population * (1-POPULATION_TO_DESTROY))):
-			newGeneration.append(deepcopy(parentGeneration[i][1]))
+		species.sort(reverse = True, key = lambda x: x[0])
+		cutoff = len(species)
+		curr = 0
+		for i in range(len(species)):
+			if curr > globals.population * 0.8:
+				cutoff = i
+				break
+			curr += len(species[i])
+		species = species[:cutoff]
+		species_fitness = [i[0] for i in species]
+		total_fitness = sum(species_fitness)
 
-		to_be_mutated = random.sample(parentGeneration[:int(globals.population)], int(globals.population * POPULATION_TO_MUTATE))
-
-		for genome in to_be_mutated:
-			GOD.mutate(globals, genome[1], np.random.choice([Globals.Mutation.EDGE, Globals.Mutation.NODE, Globals.Mutation.WEIGHT],p=[MUTATE_CONNECTION, MUTATE_NODE, MUTATE_WEIGHT]))
-		
-		for genome in to_be_mutated:
-			newGeneration.append(deepcopy(genome[1]))
-
-		to_be_mated = random.sample(newGeneration, int(globals.population * POPULATION_TO_MATE)*2)
-		for i in range(0, len(to_be_mated), 2):
-			newGeneration.append(GOD.let_there_be_sex(globals, to_be_mated[i], to_be_mated[i+1]))
-
-		globals.genomes = newGeneration[:globals.population]
+		for ind,specas in enumerate(species):
+			speca = specas[1]
+			speca.sort(reverse = True, key = lambda x: x[0])
+			new_species_population = int((species_fitness[ind]/total_fitness) * globals.population)
+			if new_species_population != 0:
+				for i in range(new_species_population):
+					no_to_keep = len(speca)//2
+					if no_to_keep == 0:
+						no_to_keep = 1
+					ch = np.random.choice([0,1,2], p=[0.4,0.4,0.2])
+					if ch == 0:
+						genome = deepcopy(random.choice(speca[:no_to_keep])[1])
+					elif ch == 1:
+						genome = deepcopy(random.choice(speca[:no_to_keep])[1])
+						GOD.mutate(globals, genome, np.random.choice([Globals.Mutation.EDGE, Globals.Mutation.NODE, Globals.Mutation.WEIGHT],p=[MUTATE_CONNECTION, MUTATE_NODE, MUTATE_WEIGHT]))
+					else:
+						parent1 = random.choice(speca[:no_to_keep])[1]
+						parent2 = random.choice(speca[:no_to_keep])[1]
+						genome = GOD.let_there_be_sex(globals, parent1, parent2)
+					newGeneration.append(genome)
+		globals.current_generation += 1
+		globals.genomes = newGeneration

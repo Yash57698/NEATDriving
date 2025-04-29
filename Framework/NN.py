@@ -25,9 +25,12 @@ class ConnectGene:
 	def __init__(self, IN: Node, OUT: Node, weight: float, enabled: bool, innov_num: int):
 		self.IN = IN
 		self.OUT = OUT
-		self.weight = weight
+		self.weight = torch.tensor(weight)
 		self.enabled = enabled
 		self.innov = innov_num
+
+	def __str__(self):
+		return f"IN: {self.IN.id}, OUT: {self.OUT.id}, weight: {self.weight}, enabled: {self.enabled}, innov: {self.innov}"
 
 class Genome:
 	'''
@@ -225,11 +228,21 @@ class NN(torch.nn.Module):
 			
 			node.activation = torch.Tensor([0.0])
 			# print(self.revadjacencylist[node.id])
-			for conn in self.revadjacencylist[node.id]:
-				if conn.enabled:
-					node.activation += get_activation(conn.IN) * conn.weight
-					# print(conn.IN.activation,conn.weight)
-			node.activation += node.bias
+			try:
+				for conn in self.revadjacencylist[node.id]:
+					if conn.enabled:
+						node.activation += get_activation(conn.IN) * conn.weight
+						# print(conn.IN.activation,conn.weight)
+				node.activation += node.bias
+			except:
+				self.genome.draw_network_newwindow()
+				print("Error in get_activation")
+				print(self.revadjacencylist)
+				for node in self.revadjacencylist:
+					print(node,end=": ")
+					for conn in self.revadjacencylist[node.id]:
+						print(conn)
+				exit(0)
 			# node.activation = Globals.activations[node.activationtype](node.activation)
 
 			node.computed = True
