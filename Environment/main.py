@@ -49,7 +49,7 @@ def car_hits_track_edges(car_pos, angle_deg):
     return False
 
 # Screen dimensions
-WIDTH, HEIGHT = 800, 850
+WIDTH, HEIGHT = 1200, 850
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Drivable Rectangle")
 
@@ -134,7 +134,7 @@ def get_line_intersection(p1, p2, p3, p4):
 
 running = True
 slow = True
-def RunRound(creatureNN : NN,Generation = 0, framecap = 300,id = -1):
+def RunRound(creatureNN : NN,Generation = 0, framecap = 300,id = -1, genome = None):
     sys.path.append('../Environment')
     global slow
     global car_x, car_y, car_angle, car_speed, current_checkpoint, points
@@ -179,7 +179,7 @@ def RunRound(creatureNN : NN,Generation = 0, framecap = 300,id = -1):
         output = torch.tensor(creatureNN(Raydistances))
         output = torch.nn.functional.softmax(output).detach().numpy()
         outputformatted = output
-        print(len(outputformatted))
+        # print(len(outputformatted))
         dir = np.argmax(output)
         vert = dir%3 -1
         hori = dir//3 -1 
@@ -262,6 +262,9 @@ def RunRound(creatureNN : NN,Generation = 0, framecap = 300,id = -1):
             generation_text = font.render(f"{id} of Generation: {Generation}", True, (0, 0, 0))
             screen.blit(generation_text, (500, 750))
 
+        if(genome != None):
+            genome.draw_network(screen = screen,offset = (800,50))
+            # screen.blit(net, (800, 0))
         pygame.display.flip()
         if slow:
             clock.tick(60)

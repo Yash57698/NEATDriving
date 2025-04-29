@@ -7,7 +7,15 @@ from Environment.main import *
 
 Universe = Globals(8,9,POPULATIONS)
 GOD.create_initial_genomes(Universe)
+# creature = Universe.genomes[0]
+# GOD.mutate_add_connection(Universe, creature)
+# GOD.mutate_add_node(Universe, creature)
 
+# GOD.mutate_add_connection(Universe, creature)
+# GOD.mutate_add_node(Universe, creature)
+# GOD.mutate_add_connection(Universe, creature)
+
+# creature.draw_network_newwindow()
 for i in range(100):
     GOD.Evaluate_and_Mutate(Universe)
 

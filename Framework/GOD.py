@@ -62,6 +62,8 @@ class GOD:
 				new_node = globals.node_map[conn.IN.id, conn.OUT.id]
 				# print("adding a node between ", conn.IN.id, "and", conn.OUT.id)
 				print(new_node.id, "already exists")
+				new_node.parent1id = conn.IN.id
+				new_node.parent2id = conn.OUT.id
 				genome.nodes.append(new_node)
 				conn1 = ConnectGene(conn.IN, new_node, 1, True, globals.innov_num)
 				conn2 = ConnectGene(new_node, conn.OUT, conn.weight, True, globals.innov_num)
@@ -73,6 +75,8 @@ class GOD:
 				new_node = Node(globals.nodes, True, random.normalvariate(0, 1), Globals.Type.HIDDEN)
 				globals.nodes += 1
 				genome.nodes.append(new_node)
+				new_node.parent1id = conn.IN.id
+				new_node.parent2id = conn.OUT.id
 				# print("adding a node between ", conn.IN.id, "and", conn.OUT.id)
 				print("new node id: ", new_node.id)
 				globals.innov_num += 1
@@ -152,13 +156,13 @@ class GOD:
 		'''
 		parentGeneration = []
 		for (indx,genome) in enumerate(globals.genomes):
-			parentGeneration.append((RunRound(NN(genome, grad = False),globals.current_generation, id = indx),genome))	
+			parentGeneration.append((RunRound(NN(genome, grad = False),globals.current_generation, id = indx,genome=genome),genome))	
 
 		globals.current_generation += 1		
 
 		parentGeneration.sort(reverse = True, key = lambda x: x[0])
 
-		parentGeneration[0][1].draw_network("best")
+		# parentGeneration[0][1].draw_network("best")
 
 		newGeneration = []
 		for i in range(int(globals.population * (1-POPULATION_TO_DESTROY))):

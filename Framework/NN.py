@@ -2,6 +2,7 @@ from utils import Globals
 import torch
 import networkx as nx
 import matplotlib.pyplot as plt
+import pygame
 
 class Node:
 	'''
@@ -12,6 +13,8 @@ class Node:
 		self.enabled = enabled
 		self.bias = bias
 		self.type = type
+		self.parent1id = -1
+		self.parent2id = -1
 		self.activation = 0
 		self.activationtype = 0
 		self.computed = False
@@ -53,117 +56,128 @@ class Genome:
 				self.nodes.append(Node(i, True, 0, globals.Type.OUTPUT))
 		self.connections = []
 
-	# def draw_network(self):
-	# 	neurons = [node.id for node in self.nodes]
-	# 	input_neurons = [node.id for node in self.nodes if node.type == Globals.Type.INPUT]
-	# 	output_neurons = [node.id for node in self.nodes if node.type == Globals.Type.OUTPUT]
-	# 	connections = [(conn.IN.id, conn.OUT.id) for conn in self.connections if conn.enabled]
-	# 	G = nx.DiGraph()
-	# 	G.add_nodes_from(neurons)
-	# 	G.add_edges_from(connections)
+	def draw_network(self,name = "Network",screen = None, offset = (0,0)):
+		neurons = [node.id for node in self.nodes]
+		input_neurons = [node.id for node in self.nodes if node.type == Globals.Type.INPUT]
+		output_neurons = [node.id for node in self.nodes if node.type == Globals.Type.OUTPUT]
+		hidden_neurons = [(node.id,node.parent1id,node.parent2id) for node in self.nodes if node.id not in input_neurons + output_neurons]
+		connections = [(conn.IN.id, conn.OUT.id) for conn in self.connections if conn.enabled]
 
-	# 	# Initialize spring layout for base layout
-	# 	pos = nx.kamada_kawai_layout(G)
+		# Create a surface instead of initializing a screen
+		surface_width = 300
+		surface_height = 500
 
-	# 	hidden_neurons = [n for n in neurons if n not in input_neurons and n not in output_neurons]
+		# Colors
+		white = (255, 255, 255)
+		black = (0, 0, 0)
+		blue = (0, 0, 255)
+		red = (255, 0, 0)
+		green = (0, 255, 0)
 
-	# 	# Spread inputs vertically on the left (x = -1)
-	# 	for i, n in enumerate(sorted(input_neurons)):
-	# 		pos[n] = (-1, 1 - 2 * i / max(len(input_neurons) - 1, 1))
+		# Node positions
+		positions = {}
 
-	# 	# Spread outputs vertically on the right (x = 1)
-	# 	for i, n in enumerate(sorted(output_neurons)):
-	# 		pos[n] = (1, 1 - 2 * i / max(len(output_neurons) - 1, 1))
+		# Calculate positions for input neurons (stacked on the left)
+		for i, n in enumerate(sorted(input_neurons)):
+			x = 0
+			y = 0 + i * (surface_height - 200) // max(len(input_neurons) - 1, 1)
+			positions[n] = (x, y)
 
-	# 	plt.figure(figsize=(10, 7))
-	# 	nx.draw_networkx_nodes(G, pos, node_size=1500, node_color='lightblue')
-	# 	nx.draw_networkx_edges(G, pos, edge_color='gray', arrows=True)
-	# 	nx.draw_networkx_labels(G, pos, font_size=12, font_weight='bold')
-	# 	plt.title("Neural Network Layout (Inputs Left, Outputs Right)")
-	# 	plt.axis('off')
+		# Calculate positions for output neurons (stacked on the right)
+		for i, n in enumerate(sorted(output_neurons)):
+			x = surface_width
+			y = 0 + i * (surface_height - 200) // max(len(output_neurons) - 1, 1)
+			positions[n] = (x, y)
 
-	# 	plt.savefig("neural_networks.png")
-	# 	plt.show()
-	def draw_network(self,name = "Network"):
-		import collections
+		# Calculate positions for hidden neurons (average of their parents)
+		def calculate_position(n):
+			if type(n) == int:
+				return positions[n]
+			if n[0] in positions:
+				return positions[n[0]]
+			parents = []
+			if n[1] != -1:
+				parents.append(n[1])
+			if n[2] != -1:
+				parents.append(n[2])
+			if parents:
+				x = sum(calculate_position(p)[0] for p in parents) / len(parents)
+				y = sum(calculate_position(p)[1] for p in parents) / len(parents)
+				positions[n[0]] = (x, y)
+			else:
+				positions[n[0]] = (surface_width // 2, surface_width // 2)  # Default position if no parents
+			return positions[n[0]]
+
+		for n in hidden_neurons:
+			calculate_position(n)
+		
+
+		# Draw connections
+		for conn in self.connections:
+			if conn.enabled:
+				start_pos = positions[conn.IN.id]
+				end_pos = positions[conn.OUT.id]
+				color = green if conn.weight > 0 else red
+				# print(offset + start_pos, offset + end_pos)
+				pygame.draw.line(screen, color, (offset[0] + start_pos[0] ,offset[1] + start_pos[1]), (offset[0] + end_pos[0] ,offset[1] + end_pos[1]), 2)
+
+		# Draw neurons
+		for n, pos in positions.items():
+			color = blue if n in input_neurons else (red if n in output_neurons else black)
+			pygame.draw.circle(screen, color, (offset[0] + int(pos[0]), offset[1] + int(pos[1])), 5)
+		return
+
+	def draw_network_newwindow(self,name = "Network"):
 
 		neurons = [node.id for node in self.nodes]
 		input_neurons = [node.id for node in self.nodes if node.type == Globals.Type.INPUT]
 		output_neurons = [node.id for node in self.nodes if node.type == Globals.Type.OUTPUT]
-		hidden_neurons = [node.id for node in self.nodes if node.id not in input_neurons + output_neurons]
-
+		hidden_neurons = [(node.id,node.parent1id,node.parent2id) for node in self.nodes if node.id not in input_neurons + output_neurons]
+		# print(input_neurons,output_neurons,hidden_neurons)
 		connections = [(conn.IN.id, conn.OUT.id) for conn in self.connections if conn.enabled]
 
-		G = nx.DiGraph()
-		G.add_nodes_from(neurons)
-		G.add_edges_from(connections)
+		
+		pygame.init()
 
-		# --- Step 1: Compute topological depth ---
-		def compute_depths():
-			depths = {nid: 0 for nid in neurons}
-			visited = set()
+		# Screen dimensions
+		screen_width = 800
+		screen_height = 600
+		screen = pygame.display.set_mode((screen_width, screen_height))
+		pygame.display.set_caption(name)
 
-			def dfs(nid, depth):
-				if nid in visited:
-					depths[nid] = max(depths[nid], depth)
-				else:
-					visited.add(nid)
-					depths[nid] = depth
-				for _, tgt in G.edges(nid):
-					dfs(tgt, depth + 1)
+		# Colors
+		white = (255, 255, 255)
+		black = (0, 0, 0)
+		blue = (0, 0, 255)
+		red = (255, 0, 0)
+		green = (0, 255, 0)
 
-			for nid in input_neurons:
-				dfs(nid, 0)
+		# Node positions
+		positions = {}
+		running = True
+		while running:
+			screen.fill(white)
 
-			return depths
+			# Draw connections
+			# for conn in self.connections:
+			# 	if conn.enabled:
+			# 		start_pos = positions[conn.IN.id]
+			# 		end_pos = positions[conn.OUT.id]
+			# 		color = green if conn.weight > 0 else red
+			# 		pygame.draw.line(screen, color, start_pos, end_pos, 2)
 
-		depths = compute_depths()
+			# # Draw neurons
+			# for n, pos in positions.items():
+			# 	color = blue if n in input_neurons else (red if n in output_neurons else black)
+			# 	pygame.draw.circle(screen, color, (int(pos[0]), int(pos[1])), 20)
+			self.draw_network(screen=screen,offset=(0,0))
+			pygame.display.flip()
 
-		# --- Step 2: Set X coordinates ---
-		pos = {}
+			for event in pygame.event.get():
+				if event.type == pygame.QUIT:
+					running = False
 
-		# Inputs: always at x = -1
-		for nid in input_neurons:
-			pos[nid] = (-1.0, 0)
-
-		# Outputs: always at x = 1
-		for nid in output_neurons:
-			pos[nid] = (1.0, 0)
-
-		# Hidden: strictly between -1 and 1
-		if hidden_neurons:
-			min_d = min(depths[nid] for nid in hidden_neurons)
-			max_d = max(depths[nid] for nid in hidden_neurons)
-			range_d = max(max_d - min_d, 1)
-
-			for nid in hidden_neurons:
-				# Normalize and squeeze into (-1, 1)
-				normalized = (depths[nid] - min_d) / range_d
-				x = -0.9 + 1.8 * normalized  # ensures x in (-1, 1)
-				pos[nid] = (x, 0)
-
-		# --- Step 3: Assign Y coordinates by layering nodes vertically at each X ---
-		x_buckets = collections.defaultdict(list)
-		for nid, (x, _) in pos.items():
-			x_buckets[x].append(nid)
-
-		for x, nids in x_buckets.items():
-			n = len(nids)
-			for i, nid in enumerate(sorted(nids)):
-				y = 1 - 2 * i / max(n - 1, 1)
-				pos[nid] = (x, y)
-
-		# --- Step 4: Draw ---
-		plt.figure(figsize=(12, 8))
-		nx.draw_networkx_nodes(G, pos, node_size=1000, node_color='skyblue')
-		nx.draw_networkx_edges(G, pos, edge_color='gray', arrows=True, arrowstyle='->', arrowsize=20)
-		nx.draw_networkx_labels(G, pos, font_size=10, font_weight='bold')
-
-		plt.title("Neural Network Layout (Inputs Left, Outputs Right, Hidden Strictly Between)")
-		plt.axis('off')
-		plt.tight_layout()
-		plt.savefig(f"{name}.png")
-		plt.show()
+		pygame.quit()
 
 class NN(torch.nn.Module):
 	'''
