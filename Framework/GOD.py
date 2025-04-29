@@ -70,7 +70,7 @@ class GOD:
 				conn.enabled = False
 				done = True
 			else:
-				new_node = Node(globals.nodes, True, random.normalvariate(0, 1), Globals.Type.HIDDEN)
+				new_node = Node(globals.nodes, random.normalvariate(0, 1), Globals.Type.HIDDEN)
 				globals.nodes += 1
 				genome.nodes.append(new_node)
 				# print("adding a node between ", conn.IN.id, "and", conn.OUT.id)
@@ -112,14 +112,19 @@ class GOD:
 		sorted(genome1.connections, key = lambda c: c.innov)
 		sorted(genome2.connections, key = lambda c: c.innov)
 		genome = Genome(globals)
-		genome.nodes = list(set(genome1.nodes).union(set(genome2.nodes)))
+		for node in genome1.nodes:
+			if node.type != Globals.Type.INPUT and node.type != Globals.Type.OUTPUT:
+				genome.nodes.append(Node(node.id, node.bias, node.type))
+		for node in genome2.nodes:
+			if node.type != Globals.Type.INPUT and node.type != Globals.Type.OUTPUT:
+				genome.nodes.append(Node(node.id, node.bias, node.type))
 		i = 0
 		j = 0
 		while i < len(genome1.connections) and j < len(genome2.connections):
 			# print("i: ", i, "j: ", j, "len1: ", len(genome1.connections), "len2: ", len(genome2.connections), "innov1: ", genome1.connections[i].innov, "innov2: ", genome2.connections[j].innov)
 			if genome1.connections[i].innov == genome2.connections[j].innov:
 				genome.connections.append(
-					ConnectGene(genome1.connections[i].IN, genome1.connections[i].OUT, genome1.connections[i].weight, genome1.connections[i].enabled and genome2.connections[i].enabled, genome1.connections[i].innov)
+					ConnectGene(genome1.connections[i].IN, genome1.connections[i].OUT, genome1.connections[i].weight, genome1.connections[i].enabled and genome2.connections[j].enabled, genome1.connections[i].innov)
 				)
 				i += 1
 				j += 1
@@ -143,7 +148,10 @@ class GOD:
 			genome.connections.append(
 				ConnectGene(genome2.connections[j].IN, genome2.connections[j].OUT, genome2.connections[j].weight, genome2.connections[j].enabled, genome2.connections[j].innov)
 			)
-			j += 1	
+			j += 1
+
+		
+
 		return genome
 			
 	def Evaluate_and_Mutate(globals: Globals):
@@ -164,7 +172,7 @@ class GOD:
 		for i in range(int(globals.population * (1-POPULATION_TO_DESTROY))):
 			newGeneration.append(deepcopy(parentGeneration[i][1]))
 
-		to_be_mutated = random.sample(parentGeneration[:int(globals.population * (1-POPULATION_TO_DESTROY))], int(globals.population * POPULATION_TO_MUTATE))
+		to_be_mutated = random.sample(parentGeneration[:int(globals.population)], int(globals.population * POPULATION_TO_MUTATE))
 
 		for genome in to_be_mutated:
 			GOD.mutate(globals, genome[1], np.random.choice([Globals.Mutation.EDGE, Globals.Mutation.NODE, Globals.Mutation.WEIGHT],p=[MUTATE_CONNECTION, MUTATE_NODE, MUTATE_WEIGHT]))

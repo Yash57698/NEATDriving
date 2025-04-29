@@ -7,9 +7,8 @@ class Node:
 	'''
 		These are the nodes/neurons in the neural network.
 	'''
-	def __init__(self, id: int, enabled: bool, bias: float, type: int):
+	def __init__(self, id: int, bias: float, type: int):
 		self.id = id # uniquely identifies a node
-		self.enabled = enabled
 		self.bias = bias
 		self.type = type
 		self.activation = 0
@@ -48,9 +47,9 @@ class Genome:
 		self.nodes = []
 		for i in range(self.input_features + self.output_features):
 			if i < self.input_features:
-				self.nodes.append(Node(i, True, 0, globals.Type.INPUT))
+				self.nodes.append(Node(i, 0, globals.Type.INPUT))
 			else:
-				self.nodes.append(Node(i, True, 0, globals.Type.OUTPUT))
+				self.nodes.append(Node(i, 0, globals.Type.OUTPUT))
 		self.connections = []
 
 	# def draw_network(self):
@@ -224,7 +223,6 @@ class NN(torch.nn.Module):
 
 		for node in self.genome.nodes:
 			if(node.type == Globals.Type.OUTPUT):
-				# print(node.id)
 				get_activation(node)
 
 		return [self.genome.nodes[i].activation for i in range(len(self.genome.nodes)) if self.genome.nodes[i].type == Globals.Type.OUTPUT]
