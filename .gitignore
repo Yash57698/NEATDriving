@@ -1,2 +1,3 @@
 venv/*
 Framework/__pycache__/*
+Environment/__pycache__/*

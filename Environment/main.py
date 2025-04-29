@@ -134,7 +134,7 @@ def get_line_intersection(p1, p2, p3, p4):
 
 running = True
 slow = True
-def RunRound(creatureNN : NN,Generation = 0, framecap = 300,id = -1, genome = None):
+def RunRound(creatureNN : NN,Generation = 0, framecap = 250,id = -1, genome = None):
     sys.path.append('../Environment')
     global slow
     global car_x, car_y, car_angle, car_speed, current_checkpoint, points
@@ -185,7 +185,7 @@ def RunRound(creatureNN : NN,Generation = 0, framecap = 300,id = -1, genome = No
 
         if car_hits_track_edges((car_x, car_y), car_angle) or frames > framecap:
             # Reset the game if the car goes off track or after 1000 frames
-            return checkpoints_crossed*1000 + frames + forward_fames*10
+            return checkpoints_crossed*1000 + frames
 
         if vert == -1:
             forward_fames += 1
