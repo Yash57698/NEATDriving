@@ -179,10 +179,9 @@ def RunRound(creatureNN : NN,Generation = 0, framecap = 300,id = -1):
         output = torch.tensor(creatureNN(Raydistances))
         output = torch.nn.functional.softmax(output).detach().numpy()
         outputformatted = output
-        print(len(outputformatted))
         dir = np.argmax(output)
-        vert = dir%3 -1
-        hori = dir//3 -1 
+        vert = (dir % 3) -1
+        hori = (dir // 3) -1 
 
         if car_hits_track_edges((car_x, car_y), car_angle) or frames > framecap:
             # Reset the game if the car goes off track or after 1000 frames
