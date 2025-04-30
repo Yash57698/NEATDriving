@@ -59,6 +59,8 @@ RED = (255, 0, 0)
 
 # Clock for controlling frame rate
 clock = pygame.time.Clock()
+running = True
+slow = True
 
 # Car properties
 car_width, car_height = 50, 30
@@ -72,6 +74,7 @@ turn_speed = 3
 track_color = (0, 0, 0)
 track_width = 10
 track_points = [[(22, 700), (32, 80), (98, 21), (271, 26), (354, 246), (480, 243), (531, 97), (752, 95),(752, 429), (627, 542), (756, 689), (31, 729), (25, 700)],[ (122, 634), (117, 112), (224, 100), (323, 319), (532, 317), (594, 174), (674, 162), (673, 386), (531, 535), (583, 629), (125, 631)]]
+Draw = False
 
 def draw_track():
     for track in track_points:
@@ -132,11 +135,10 @@ def get_line_intersection(p1, p2, p3, p4):
     return None
 
 
-running = True
-slow = True
 def RunRound(creatureNN : NN,Generation = 0, framecap = 250,id = -1, genome = None,speciesid = -1,species_infotext = None):
     sys.path.append('../Environment')
     global slow
+    global Draw
     global car_x, car_y, car_angle, car_speed, current_checkpoint, points
     global track_points, checkpoints, track_color, track_width, screen, clock, font
     global car_width, car_height, max_speed, acceleration, deceleration, turn_speed
@@ -153,11 +155,11 @@ def RunRound(creatureNN : NN,Generation = 0, framecap = 250,id = -1, genome = No
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_s:
                     slow = not slow
+                if event.key == pygame.K_d:
+                    Draw = not Draw
             if event.type == pygame.QUIT:
                 running = False
 
-        screen.fill(WHITE)
-        draw_track()
         num_rays = 8
         ray_length = 200
         ray_color = (0, 255, 0)
@@ -170,9 +172,6 @@ def RunRound(creatureNN : NN,Generation = 0, framecap = 250,id = -1, genome = No
             # Normalize distances to [0, 1] range   
             normalized_distance = dist / ray_length
             Raydistances.append(normalized_distance)
-
-            pygame.draw.line(screen, ray_color, origin, end_point,2)
-            pygame.draw.circle(screen, (0, 0, 255), (int(end_point[0]), int(end_point[1])), 3)
         
         Raydistances = torch.tensor(Raydistances)
         
@@ -185,7 +184,7 @@ def RunRound(creatureNN : NN,Generation = 0, framecap = 250,id = -1, genome = No
 
         if car_hits_track_edges((car_x, car_y), car_angle) or frames > framecap:
             # Reset the game if the car goes off track or after 1000 frames
-            return checkpoints_crossed*1000 + 1
+            return checkpoints_crossed*1000 + frames
 
         if vert == -1:
             forward_fames += 1
@@ -233,45 +232,61 @@ def RunRound(creatureNN : NN,Generation = 0, framecap = 250,id = -1, genome = No
                     checkpoints_crossed += 1
                     break  # Avoid counting the same checkpoint multiple times
 
-        car_image = pygame.image.load("../Environment/car_red_1.png")
-        car_image = pygame.transform.scale(car_image, (car_width, car_height))
+        if Draw:
+            car_image = pygame.image.load("../Environment/car_red_1.png")
+            car_image = pygame.transform.scale(car_image, (car_width, car_height))
 
-        rotated_car = pygame.transform.rotate(car_image, car_angle)
-        rotated_rect = rotated_car.get_rect(center=(car_x, car_y))
-        # Draw car hitbox
-        screen.blit(rotated_car, rotated_rect.topleft)
-        for i in range(4):
-            pygame.draw.line(screen, (255, 0, 0), corners_world[i], corners_world[(i + 1) % 4], 2)
+            rotated_car = pygame.transform.rotate(car_image, car_angle)
+            rotated_rect = rotated_car.get_rect(center=(car_x, car_y))
+            
+            screen.fill(WHITE)
+            draw_track()
+            for i in range(num_rays):
+                angle = car_angle + i * 360 / num_rays
+                origin = (car_x, car_y)
+                end_point = cast_ray(origin, angle, ray_length)
 
-        # Draw line checkpoints
-        for idx, (start, end) in enumerate(checkpoints):
-            color = (0, 200, 255) if idx == current_checkpoint else (180, 180, 180)
-            pygame.draw.line(screen, color, start, end, 4)
+                pygame.draw.line(screen, ray_color, origin, end_point,2)
+                pygame.draw.circle(screen, (0, 0, 255), (int(end_point[0]), int(end_point[1])), 3)
+            
+            # Draw car hitbox
+            screen.blit(rotated_car, rotated_rect.topleft)
+            for i in range(4):
+                pygame.draw.line(screen, (255, 0, 0), corners_world[i], corners_world[(i + 1) % 4], 2)
 
-        # Display checkpoint progress
-        progress_text = font.render(f"Checkpoints: {points}/{len(checkpoints)}", True, (0, 0, 0))
-        screen.blit(progress_text, (500, 10))
-        progress_text = font.render(f"Frame: {frames}/{framecap}", True, (0, 0, 0))
-        screen.blit(progress_text, (500, 50))
+            # Draw line checkpoints
+            for idx, (start, end) in enumerate(checkpoints):
+                color = (0, 200, 255) if idx == current_checkpoint else (180, 180, 180)
+                pygame.draw.line(screen, color, start, end, 4)
 
-        output_text = font.render(f"Outputs: {[round(float(o),2) for o in outputformatted]}", True, (0, 0, 0))
-        screen.blit(output_text, (10, 800))
+            # Display checkpoint progress
+            progress_text = font.render(f"Checkpoints: {points}/{len(checkpoints)}", True, (0, 0, 0))
+            screen.blit(progress_text, (400, 10))
+            progress_text = font.render(f"Frame: {frames:03d}/{framecap}, FrameRate: {clock.get_fps():.2f}", True, (0, 0, 0))
+            screen.blit(progress_text, (400, 50))
 
-        if(species_infotext != None):
-            texts = species_infotext.split('\n')
-            for i, text in enumerate(texts):
-                species_text = font.render(text, True, (0, 0, 0))
-                screen.blit(species_text, (800, 600 + i * 30))
+            output_text = font.render(f"Outputs: {[round(float(o),2) for o in outputformatted]}", True, (0, 0, 0))
+            screen.blit(output_text, (10, 800))
 
-        if(Generation != 0):
-            generation_text = font.render(f"{id} in Species: {speciesid} of Generation: {Generation}", True, (0, 0, 0))
-            screen.blit(generation_text, (400, 750))
+            if(species_infotext != None):
+                texts = species_infotext.split('\n')
+                for i, text in enumerate(texts):
+                    species_text = font.render(text, True, (0, 0, 0))
+                    screen.blit(species_text, (800, 600 + i * 30))
 
-        if(genome != None):
-            genome.draw_network(screen = screen,offset = (800,50))
-            # screen.blit(net, (800, 0))
-        pygame.display.flip()
+            if(Generation != 0):
+                generation_text = font.render(f"{id} in Species: {speciesid} of Generation: {Generation}", True, (0, 0, 0))
+                screen.blit(generation_text, (400, 750))
+
+            if(genome != None):
+                genome.draw_network(screen = screen,offset = (800,50))
+                # screen.blit(net, (800, 0))
+            pygame.display.flip()
+        else:
+            print(f"fps: {clock.get_fps()} Gen : {Generation}",end='\r')
         if slow:
             clock.tick(60)
+        else:
+            clock.tick(1000)
 
     pygame.quit()

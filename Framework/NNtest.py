@@ -16,7 +16,7 @@ GOD.create_initial_genomes(Universe)
 # GOD.mutate_add_connection(Universe, creature)
 
 # creature.draw_network_newwindow()
-for i in range(100):
+for i in range(10000):
     GOD.Evaluate_and_Mutate(Universe)
 
 

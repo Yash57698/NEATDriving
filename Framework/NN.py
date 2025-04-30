@@ -13,6 +13,7 @@ class Node:
 		self.bias = bias
 		self.type = type
 		self.parent1id = -1
+		self.in_degree = 0
 		self.parent2id = -1
 		self.activation = 0
 		self.activationtype = 0
@@ -202,57 +203,90 @@ class NN(torch.nn.Module):
 			node.bias = torch.nn.Parameter(torch.tensor([node.bias], dtype=torch.float64), requires_grad=grad)
 
 		revadjacencylist = {}
+		adjacencylist = {}
 		for node in genome.nodes:
 			revadjacencylist[node.id] = []
+			adjacencylist[node.id] = []
 
 		for connection in connections:
 			revadjacencylist[connection.OUT.id].append(connection)
+			adjacencylist[connection.IN.id].append(connection)
 		self.revadjacencylist = revadjacencylist
-
+		self.adjacencylist = adjacencylist
 		self.connections = connections
 		
 
+	# def forward(self, input: torch.Tensor):
+	# 	for node in self.genome.nodes:
+	# 		node.activation = 0
+	# 		node.computed = False
+
+	# 	for i in range(self.genome.input_features):
+	# 		self.genome.nodes[i].activation = input[i]
+	# 		self.genome.nodes[i].computed = True
+
+		
+	# 	def get_activation(node):
+	# 		if node.computed:
+	# 			return node.activation
+			
+	# 		node.activation = torch.Tensor([0.0])
+	# 		# print(self.revadjacencylist[node.id])
+			
+	# 		for conn in self.revadjacencylist[node.id]:
+	# 			if conn.enabled:
+	# 				node.activation += get_activation(conn.IN) * conn.weight
+	# 				# print(conn.IN.activation,conn.weight)
+	# 		node.activation += node.bias
+	# 		# node.activation = Globals.activations[node.activationtype](node.activation)
+
+	# 		node.computed = True
+	# 		return node.activation
+
+	# 	for node in self.genome.nodes:
+	# 		if(node.type == Globals.Type.OUTPUT):
+	# 			get_activation(node)
+
+	# 	return [self.genome.nodes[i].activation for i in range(len(self.genome.nodes)) if self.genome.nodes[i].type == Globals.Type.OUTPUT]
 	def forward(self, input: torch.Tensor):
 		for node in self.genome.nodes:
-			node.activation = 0
+			node.activation = torch.tensor([0.0])
 			node.computed = False
+			node.in_degree = 0  # For Kahn's algorithm
 
+		# Set input activations
 		for i in range(self.genome.input_features):
 			self.genome.nodes[i].activation = input[i]
 			self.genome.nodes[i].computed = True
 
-		
-		def get_activation(node):
-			if node.computed:
-				return node.activation
-			
-			node.activation = torch.Tensor([0.0])
-			# print(self.revadjacencylist[node.id])
-			try:
-				for conn in self.revadjacencylist[node.id]:
-					if conn.enabled:
-						node.activation += get_activation(conn.IN) * conn.weight
-						# print(conn.IN.activation,conn.weight)
-				node.activation += node.bias
-			except:
-				self.genome.draw_network_newwindow()
-				print("Error in get_activation")
-				print(self.revadjacencylist)
-				for node in self.revadjacencylist:
-					print(node,end=": ")
-					for conn in self.revadjacencylist[node.id]:
-						print(conn)
-				exit(0)
-			# node.activation = Globals.activations[node.activationtype](node.activation)
-
-			node.computed = True
-			return node.activation
-
+		# Step 1: Compute in-degrees (number of incoming edges for each node)
 		for node in self.genome.nodes:
-			if(node.type == Globals.Type.OUTPUT):
-				get_activation(node)
+			for conn in self.revadjacencylist[node.id]:
+				if conn.enabled:
+					node.in_degree += 1
 
-		return [self.genome.nodes[i].activation for i in range(len(self.genome.nodes)) if self.genome.nodes[i].type == Globals.Type.OUTPUT]
+		# Step 2: Initialize queue with nodes that have in_degree = 0 (inputs or constants)
+		queue = [node for node in self.genome.nodes if node.in_degree == 0]
+
+		while queue:
+			current = queue.pop(0)
+			
+			for conn in self.adjacencylist.get(current.id, []):  # Forward edges
+				if not conn.enabled:
+					continue
+
+				out_node = conn.OUT
+				out_node.activation += current.activation * conn.weight
+				out_node.in_degree -= 1
+
+				if out_node.in_degree == 0:
+					out_node.activation += out_node.bias
+					# out_node.activation = Globals.activations[out_node.activationtype](out_node.activation)
+					out_node.computed = True
+					queue.append(out_node)
+
+		# Return only output activations
+		return [node.activation for node in self.genome.nodes if node.type == Globals.Type.OUTPUT]
 
 
 

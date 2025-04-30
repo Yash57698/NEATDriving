@@ -1,14 +1,18 @@
 from utils import Globals
 from NN import NN, ConnectGene, Genome, Node
 import random
+import torch
 import numpy as np
 from copy import deepcopy
 from config import *
 import sys
 sys.path.append('..')
 from Environment.main import RunRound
+from Environment.main_parallel import CarSimulator
 from config import *
 
+specieinfotex = ""
+sim = CarSimulator()
 class GOD:
 	'''
 		GOD.
@@ -97,7 +101,11 @@ class GOD:
 		if len(genome.connections) == 0:
 			return
 		conn = random.choice(genome.connections)
-		conn.weight += random.normalvariate(0, 0.1)
+		p = np.random.choice([0, 1], p=[0.9, 0.1])
+		if p == 0:
+			conn.weight += random.normalvariate(0, 0.75)
+		else:
+			conn.weight = torch.tensor(random.normalvariate(0, 1))
 
 	def mutate(globals: Globals, genome: Genome, kind: int):
 		'''
@@ -207,6 +215,7 @@ class GOD:
 		'''
 			GOD said, "Let there be evaluation!"
 		'''
+		global specieinfotex
 		Representative_genome = [globals.genomes[0]]
 		for i in globals.genomes:
 			flag = False
@@ -229,12 +238,10 @@ class GOD:
 				species.append([i])
 
 		species_fitness = [0 for i in range(len(species))]
-		specieinfotex = "No of Species :" + str(len(species)) + "\n"
-		for i in range(len(species)):
-			specieinfotex += "Species " + str(i) + " : " + str(len(species[i])) + "\n"
 		for ind,speca in enumerate(species):
 			for indx,j in enumerate(speca):
-				score = RunRound(NN(j, grad = False), globals.current_generation, genome = j,id = indx,speciesid = ind,species_infotext=specieinfotex)
+				score = sim.run(NN(j, grad = False), globals.current_generation, genome = j,id = indx,speciesid = ind,species_infotext=specieinfotex , framecap=150 + 10 * (globals.current_generation//10))
+				# score = RunRound(NN(j, grad = False), globals.current_generation, genome = j,id = indx,speciesid = ind,species_infotext=specieinfotex , framecap=150 + 10 * (globals.current_generation//10))
 				speca[indx] = [score/len(speca), speca[indx]]
 				species_fitness[ind] += score/len(speca)
 			species[ind] = [species_fitness[ind], species[ind]]
@@ -248,9 +255,13 @@ class GOD:
 				cutoff = i
 				break
 			curr += len(species[i])
+		# print(species)
 		species = species[:cutoff]
 		species_fitness = [i[0] for i in species]
 		total_fitness = sum(species_fitness)
+		specieinfotex = "No of Species :" + str(len(species)) + "\n"
+		for i in range(len(species)):
+			specieinfotex += "Species " + str(i) + " : " + str(len(species[i][1])) + f"fitness : {species[i][0]}" + "\n"
 
 		for ind,specas in enumerate(species):
 			speca = specas[1]
@@ -261,14 +272,20 @@ class GOD:
 					no_to_keep = len(speca)//2
 					if no_to_keep == 0:
 						no_to_keep = 1
-					ch = np.random.choice([0,1,2], p=[0.4,0.4,0.2])
+					ch = np.random.choice([0,1,2], p=[0.25,0.55,0.20])
+					gen = random.choice(speca[:no_to_keep])[1]
+					if len(gen.connections) <= 2:
+						ch = 1
 					if ch == 0:
-						genome = deepcopy(random.choice(speca[:no_to_keep])[1])
+						genome = deepcopy(gen)
 					elif ch == 1:
-						genome = deepcopy(random.choice(speca[:no_to_keep])[1])
-						GOD.mutate(globals, genome, np.random.choice([Globals.Mutation.EDGE, Globals.Mutation.NODE, Globals.Mutation.WEIGHT],p=[MUTATE_CONNECTION, MUTATE_NODE, MUTATE_WEIGHT]))
+						genome = deepcopy(gen)
+						if len(genome.connections) <=2:
+							GOD.mutate(globals, genome, Globals.Mutation.EDGE)
+						else:
+							GOD.mutate(globals, genome, np.random.choice([Globals.Mutation.EDGE, Globals.Mutation.NODE, Globals.Mutation.WEIGHT],p=[MUTATE_CONNECTION, MUTATE_NODE, MUTATE_WEIGHT]))
 					else:
-						parent1 = random.choice(speca[:no_to_keep])[1]
+						parent1 = gen
 						parent2 = random.choice(speca[:no_to_keep])[1]
 						genome = GOD.let_there_be_sex(globals, parent1, parent2)
 					newGeneration.append(genome)
