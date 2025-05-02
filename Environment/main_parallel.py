@@ -6,6 +6,16 @@ import sys
 
 sys.path.append('..')
 from Framework.NN import NN
+pygame.init()
+
+track2 = [[(134, 555), (135, 143), (193, 95), (576, 100), (644, 159), (624, 546), (567, 599), (190, 599), (135, 556)],[(45, 560), (50, 140), (181, 5), (567, 10), (752, 139), (718, 545), (587, 693), (188, 687), (46, 563)]]
+checkpoints2 = [[(134, 378), (46, 381)], [(135, 317), (51, 317)], [(135, 256), (50, 253)], [(133, 199), (52, 200)], [(136, 146), (51, 138)], [(168, 113), (109, 79)], [(190, 91), (183, 7)], [(242, 90), (237, 6)], [(285, 93), (283, 8)], [(327, 97), (330, 8)], [(372, 97), (378, 11)], [(415, 99), (421, 9)], [(462, 96), (471, 14)], [(518, 97), (528, 13)], [(572, 101), (592, 31)], [(606, 124), (643, 69)], [(640, 156), (694, 105)], [(648, 185), (743, 181)], [(646, 220), (739, 230)], [(643, 279), (738, 295)], [(638, 332), (729, 351)], [(633, 399), (728, 417)], [(630, 476), (720, 485)], [(623, 531), (712, 542)], [(607, 569), (664, 606)], [(574, 595), (589, 688)], [(518, 604), (522, 691)], [(446, 599), (454, 690)], [(390, 602), (393, 691)], [(326, 598), (323, 689)], [(247, 598), (243, 690)], [(190, 598), (180, 686)], [(159, 580), (113, 623)], [(131, 554), (48, 555)],[(132, 492), (46, 499)], [(128, 436), (45, 431)]]
+carresetpostion2 = (92,526)
+
+track1 = [[(22, 700), (32, 80), (98, 21), (271, 26), (354, 246), (480, 243), (531, 97), (752, 95),(752, 429), (627, 542), (756, 689), (31, 729), (25, 700)],[ (122, 634), (117, 112), (224, 100), (323, 319), (532, 317), (594, 174), (674, 162), (673, 386), (531, 535), (583, 629), (125, 631)]]
+checkpoints1 = [[(30, 300), (119, 300)], [(34, 167), (113, 163)], [(37, 82), (116, 111)], [(151, 26), (166, 104)], [(265, 30), (224, 97)], [(311, 127), (260, 171)], [(338, 209), (291, 242)], [(351, 247), (351, 316)], [(430, 249), (436, 314)], [(480, 242), (529, 313)], [(506, 186), (575, 217)], [(529, 104), (593, 171)], [(641, 97), (650, 163)], [(737, 98), (678, 165)], [(750, 193), (678, 203)], [(751, 259), (676, 260)], [(753, 319), (675, 315)], [(750, 391), (674, 378)], [(708, 468), (637, 426)], [(653, 515), (593, 467)], [(629, 539), (533, 537)], [(664, 582), (573, 609)], [(724, 649), (580, 630)], [(529, 637), (536, 701)], [(465, 635), (466, 703)], [(366, 630), (373, 703)], [(299, 631), (296, 704)], [(233, 630), (232, 713)], [(146, 631), (139, 718)], [(118, 631), (27, 637)], [(119, 555), (26, 540)], [(118, 458), (24, 449)], [(116, 379), (25, 368)]]
+carresetpostion1 = (70,450)
+
 
 class CarSimulator:
     WIDTH, HEIGHT = 1200, 850
@@ -13,11 +23,11 @@ class CarSimulator:
     RED = (255, 0, 0)
     track_color = (0, 0, 0)
     track_width = 10
-    checkpoints = [[(30, 300), (119, 300)], [(34, 167), (113, 163)], [(37, 82), (116, 111)], [(151, 26), (166, 104)], [(265, 30), (224, 97)], [(311, 127), (260, 171)], [(338, 209), (291, 242)], [(351, 247), (351, 316)], [(430, 249), (436, 314)], [(480, 242), (529, 313)], [(506, 186), (575, 217)], [(529, 104), (593, 171)], [(641, 97), (650, 163)], [(737, 98), (678, 165)], [(750, 193), (678, 203)], [(751, 259), (676, 260)], [(753, 319), (675, 315)], [(750, 391), (674, 378)], [(708, 468), (637, 426)], [(653, 515), (593, 467)], [(629, 539), (533, 537)], [(664, 582), (573, 609)], [(724, 649), (580, 630)], [(529, 637), (536, 701)], [(465, 635), (466, 703)], [(366, 630), (373, 703)], [(299, 631), (296, 704)], [(233, 630), (232, 713)], [(146, 631), (139, 718)], [(118, 631), (27, 637)], [(119, 555), (26, 540)], [(118, 458), (24, 449)], [(116, 379), (25, 368)]]
-    track_points = track_points = [[(22, 700), (32, 80), (98, 21), (271, 26), (354, 246), (480, 243), (531, 97), (752, 95),(752, 429), (627, 542), (756, 689), (31, 729), (25, 700)],[ (122, 634), (117, 112), (224, 100), (323, 319), (532, 317), (594, 174), (674, 162), (673, 386), (531, 535), (583, 629), (125, 631)]]
-    font = pygame.font.SysFont(None, 36)
+    checkpoints = checkpoints2
+    track_points = track2
+    resetpos = carresetpostion2
+    car_x, car_y = resetpos
     car_width, car_height = 50, 30
-    car_x, car_y = 70, 450
     car_angle = 90
     car_speed = 0
     max_speed = 5
@@ -25,22 +35,23 @@ class CarSimulator:
     deceleration = 0.05
     turn_speed = 3
 
-    def __init__(self, draw=False, slow=True):
-        pygame.init()
-        self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
-        pygame.display.set_caption("Drivable Rectangle")
-        self.clock = pygame.time.Clock()
+    def __init__(self, draw=False, slow=False,Display = False):
+        if(Display):
+            self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
+            pygame.display.set_caption("Drivable Rectangle")
+            self.clock = pygame.time.Clock()
+            self.car_image = pygame.image.load("../Environment/car_red_1.png")
+            self.car_image = pygame.transform.scale(self.car_image, (self.car_width, self.car_height))
+            self.font = pygame.font.SysFont(None, 36)
         self.draw = draw
         self.slow = slow
-        self.car_image = pygame.image.load("../Environment/car_red_1.png")
-        self.car_image = pygame.transform.scale(self.car_image, (self.car_width, self.car_height))
 
-        
+        self.Display = Display
         self.reset()
 
     def reset(self):
-        self.car_x, self.car_y = 70, 450
-        self.car_angle = 90
+        self.car_x, self.car_y = self.resetpos
+        self.car_angle = 90 + np.random.randint(-30, 30)
         self.car_speed = 0
         self.current_checkpoint = 0
         self.points = 0
@@ -91,15 +102,17 @@ class CarSimulator:
 
         while True:
             frames += 1
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    return
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_s:
-                        self.slow = not self.slow
-                    elif event.key == pygame.K_d:
-                        self.draw = not self.draw
+            if(self.Display):
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
+                        exit(0)
+                        return
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_s:
+                            self.slow = not self.slow
+                        elif event.key == pygame.K_d:
+                            self.draw = not self.draw
 
             ray_distances = []
             for i in range(8):
@@ -108,14 +121,20 @@ class CarSimulator:
                 dist = math.hypot(end[0] - self.car_x, end[1] - self.car_y)
                 ray_distances.append(dist / 200)
 
+            ray_distances.append(self.car_speed / self.max_speed)
+            ray_distances.append(self.car_angle / 360)
             ray_tensor = torch.tensor(ray_distances)
-            output = torch.nn.functional.softmax(torch.tensor(creatureNN(ray_tensor)), dim=0).detach().numpy()
-            dir = np.argmax(output)
-            vert = (dir % 3) - 1
-            hori = (dir // 3) - 1
+            output = torch.tensor(creatureNN(ray_tensor)).numpy()
+            outputvert = output[:3]
+            outputhori = output[3:]
+            # output = torch.nn.functional.softmax(torch.tensor(creatureNN(ray_tensor)), dim=0).detach().numpy()
+
+            # dir = np.argmax(output)
+            vert = np.argmax(outputvert) - 1
+            hori = np.argmax(outputhori) - 1
 
             if self.car_hits_track_edges() or frames > framecap:
-                return checkpoints_crossed * 1000 + frames
+                return checkpoints_crossed * 1000 + 1
 
             # Movement logic
             if vert == -1:
@@ -153,13 +172,16 @@ class CarSimulator:
                         self.points += 1
                         self.current_checkpoint += 1
                         checkpoints_crossed += 1
+                        self.current_checkpoint %= len(self.checkpoints)
                         break  # Avoid counting the same checkpoint multiple times
 
-            if self.draw:
+            if self.Display:
+                self.clock.tick(60 if self.slow else 1000)
+            if self.draw and self.Display:
                 self.render(frames, output, generation, id, speciesid, species_infotext, genome)
             else:
-                print(f"fps: {self.clock.get_fps():.2f} Generation: {generation}",end = '\r')
-            self.clock.tick(60 if self.slow else 1000)
+                if(self.Display):
+                    print(f"fps: {self.clock.get_fps():.2f} Generation: {generation}",end = '\r')
 
     def render(self, frames, output, generation, id, speciesid, species_infotext, genome):
         self.screen.fill(self.WHITE)

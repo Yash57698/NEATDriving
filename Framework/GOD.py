@@ -6,13 +6,14 @@ import numpy as np
 from copy import deepcopy
 from config import *
 import sys
+import multiprocessing
 sys.path.append('..')
-from Environment.main import RunRound
 from Environment.main_parallel import CarSimulator
 from config import *
 
 specieinfotex = ""
-sim = CarSimulator()
+mainSim = CarSimulator(Display=True)
+
 class GOD:
 	'''
 		GOD.
@@ -26,10 +27,10 @@ class GOD:
 		'''
 		for i in range(globals.population):
 			# NNs should create their nodes for now
-			if i < globals.input_features:
-				globals.genomes.append(Genome(globals))
-			else:
-				globals.genomes.append(Genome(globals))
+			gen = Genome(globals)
+			for j in range(globals.input_features):
+				GOD.mutate_add_connection(globals, gen)
+			globals.genomes.append(gen)
 
 	def mutate_add_connection(globals: Globals, genome: Genome):
 		'''
@@ -37,6 +38,8 @@ class GOD:
 		'''
 		weight = random.normalvariate(0, 1)
 		done = False
+		if len(genome.connections) >= globals.nodes * (globals.nodes - 1) / 2:
+			return
 		while not done:
 			node1, node2 = random.sample(genome.nodes, 2)
 			if ((node1.type == Globals.Type.OUTPUT and node2.type == Globals.Type.OUTPUT) or (node1.type == Globals.Type.INPUT and node2.type == Globals.Type.INPUT) or (node1.type == Globals.Type.OUTPUT) or (node2.type == Globals.Type.INPUT)):
@@ -207,11 +210,17 @@ class GOD:
 			)
 			j += 1
 
-		
-
 		return genome
-			
-	def Evaluate_and_Mutate(globals: Globals):
+	
+	def get_score(genomenn,generation,framecap,indx,genome,ind,specieinfotex,pipe,display):
+		'''
+			GOD said, "Let there be score!"
+		'''
+		sim = CarSimulator(Display=display)
+		score = sim.run(genomenn,generation,framecap,ind,genome,indx,specieinfotex)
+		pipe.send(score)
+
+	def Evaluate_and_Mutate(globals: Globals,Do_multiprocessing = False , Visualize = False):
 		'''
 			GOD said, "Let there be evaluation!"
 		'''
@@ -237,26 +246,51 @@ class GOD:
 				Representative_genome.append(i)
 				species.append([i])
 
-		species_fitness = [0 for i in range(len(species))]
-		for ind,speca in enumerate(species):
-			for indx,j in enumerate(speca):
-				score = sim.run(NN(j, grad = False), globals.current_generation, genome = j,id = indx,speciesid = ind,species_infotext=specieinfotex , framecap=150 + 10 * (globals.current_generation//10))
-				# score = RunRound(NN(j, grad = False), globals.current_generation, genome = j,id = indx,speciesid = ind,species_infotext=specieinfotex , framecap=150 + 10 * (globals.current_generation//10))
-				speca[indx] = [score/len(speca), speca[indx]]
-				species_fitness[ind] += score/len(speca)
-			species[ind] = [species_fitness[ind], species[ind]]
+		if globals.current_generation <= 40:
+			framecap = 50 + 20 * (globals.current_generation//3)
+		else:
+			framecap = 1000 + 20 * (globals.current_generation//3)
+
+		if(Do_multiprocessing and (globals.current_generation % 10 != 0 or not Visualize)):
+			jobs = []
+			pipe_list = [[multiprocessing.Pipe(False) for i in spec] for spec in species]
+			for ind,speca in enumerate(species):
+				for indx,j in enumerate(speca):
+					jobs.append((NN(j, grad = False), globals.current_generation,framecap,indx,j,ind,specieinfotex,pipe_list[ind][indx][1],False))
+
+				
+			num_cpu = multiprocessing.cpu_count() - 1
+			pool = multiprocessing.Pool(processes=num_cpu)
+
+			pool.starmap(func=GOD.get_score, iterable=jobs)
+
+			pool.close()
+
+			for ind,speca in enumerate(species):
+				spec_fitness = 0
+				for indx,j in enumerate(speca):
+					species[ind][indx] = [pipe_list[ind][indx][0].recv(),species[ind][indx]]
+					spec_fitness += species[ind][indx][0]/len(speca)
+				species[ind] = [spec_fitness, species[ind]]
+		else:
+			species_fitness = [0 for i in range(len(species))]
+			for ind,speca in enumerate(species):
+				for indx,j in enumerate(speca):
+					if globals.current_generation <= 25:
+						framecap = 50 + 20 * (globals.current_generation//3)
+					else:
+						framecap = 1000 + 20 * (globals.current_generation//3)
+					score = mainSim.run(NN(j, grad = False), globals.current_generation, genome = j,id = indx,speciesid = ind,species_infotext=specieinfotex , framecap=framecap)
+					speca[indx] = [score/len(speca), speca[indx]]
+					species_fitness[ind] += score/len(speca)
+				species[ind] = [species_fitness[ind], species[ind]]
+
+
+
 
 		newGeneration = []
 		species.sort(reverse = True, key = lambda x: x[0])
 		cutoff = len(species)
-		curr = 0
-		for i in range(len(species)):
-			if curr > globals.population * 0.8:
-				cutoff = i
-				break
-			curr += len(species[i])
-		# print(species)
-		species = species[:cutoff]
 		species_fitness = [i[0] for i in species]
 		total_fitness = sum(species_fitness)
 		specieinfotex = "No of Species :" + str(len(species)) + "\n"
@@ -267,27 +301,46 @@ class GOD:
 			speca = specas[1]
 			speca.sort(reverse = True, key = lambda x: x[0])
 			new_species_population = int((species_fitness[ind]/total_fitness) * globals.population)
+			i = 0
 			if new_species_population != 0:
 				for i in range(new_species_population):
-					no_to_keep = len(speca)//2
+					choic = np.random.choice([0,1], p=[0.05,0.95])
+					no_to_keep = len(speca)//5
 					if no_to_keep == 0:
 						no_to_keep = 1
-					ch = np.random.choice([0,1,2], p=[0.25,0.55,0.20])
-					gen = random.choice(speca[:no_to_keep])[1]
-					if len(gen.connections) <= 2:
-						ch = 1
-					if ch == 0:
-						genome = deepcopy(gen)
-					elif ch == 1:
-						genome = deepcopy(gen)
-						if len(genome.connections) <=2:
-							GOD.mutate(globals, genome, Globals.Mutation.EDGE)
-						else:
-							GOD.mutate(globals, genome, np.random.choice([Globals.Mutation.EDGE, Globals.Mutation.NODE, Globals.Mutation.WEIGHT],p=[MUTATE_CONNECTION, MUTATE_NODE, MUTATE_WEIGHT]))
+
+					if choic == 0:
+						gen = random.choice(speca[:no_to_keep])[1]
+						parent2 = random.choice(species)[1][0][1]
+						genome = GOD.let_there_be_sex(globals, gen, parent2)
+						newGeneration.append(genome)
 					else:
-						parent1 = gen
-						parent2 = random.choice(speca[:no_to_keep])[1]
-						genome = GOD.let_there_be_sex(globals, parent1, parent2)
-					newGeneration.append(genome)
+						ch = np.random.choice([0,1,2], p=[0.25,0.55,0.20])
+						# ch = np.random.choice([0,1,2], p=[0.25,0.7,0.05])
+						
+						gen = random.choice(speca[:no_to_keep])[1]
+						if len(gen.connections) <= 2:
+							ch = 1
+						if ch == 0:
+							if(i >= len(speca[:no_to_keep])):
+								ch = 1
+							else:
+								genome = deepcopy(speca[:no_to_keep][i][1])
+								i+=1
+								newGeneration.append(genome)
+						if ch == 1:
+							genome = deepcopy(gen)
+							if len(genome.connections) <=2:
+								GOD.mutate(globals, genome, Globals.Mutation.EDGE)
+							else:
+								GOD.mutate(globals, genome, np.random.choice([Globals.Mutation.EDGE, Globals.Mutation.NODE, Globals.Mutation.WEIGHT],p=[MUTATE_CONNECTION, MUTATE_NODE, MUTATE_WEIGHT]))
+							newGeneration.append(genome)
+						elif ch == 2:
+							parent1 = gen
+							parent2 = random.choice(speca[:no_to_keep])[1]
+							genome = GOD.let_there_be_sex(globals, parent1, parent2)
+							newGeneration.append(genome)
+
+
 		globals.current_generation += 1
 		globals.genomes = newGeneration

@@ -1,6 +1,8 @@
 from enum import Enum
 from activations import *
-	
+import pickle
+import os
+
 class Globals:
 	'''
 		All the global structure required by GOD
@@ -31,4 +33,20 @@ class Globals:
 		self.genomes = []
 		self.nodes = input_features + output_features
 		self.population = initial_genomes
+	
+	def save_genomes(self,filepath):
+		"""
+		Save a list of Genome objects to a file using pickle.
+		"""
+		with open(filepath, 'wb') as f:
+			pickle.dump(self.genomes, f)
+
+	def load_genomes(self,filepath):
+		"""
+		Load a list of Genome objects from a file using pickle.
+		"""
+		if not os.path.exists(filepath):
+			raise FileNotFoundError(f"No file found at: {filepath}")
+		with open(filepath, 'rb') as f:
+			self.genomes = pickle.load(f)
 		

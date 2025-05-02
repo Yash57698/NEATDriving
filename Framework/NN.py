@@ -3,6 +3,7 @@ import torch
 import networkx as nx
 import matplotlib.pyplot as plt
 import pygame
+import pickle
 
 class Node:
 	'''
@@ -58,6 +59,7 @@ class Genome:
 			else:
 				self.nodes.append(Node(i, 0, globals.Type.OUTPUT))
 		self.connections = []
+		
 
 	def draw_network(self,name = "Network",screen = None, offset = (0,0)):
 		neurons = [node.id for node in self.nodes]
@@ -281,7 +283,7 @@ class NN(torch.nn.Module):
 
 				if out_node.in_degree == 0:
 					out_node.activation += out_node.bias
-					# out_node.activation = Globals.activations[out_node.activationtype](out_node.activation)
+					out_node.activation = Globals.activations[out_node.activationtype](out_node.activation)
 					out_node.computed = True
 					queue.append(out_node)
 
