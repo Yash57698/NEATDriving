@@ -3,10 +3,15 @@ import math
 import torch
 import numpy as np
 import sys
+import streamlit as st
+import os
 
 sys.path.append('..')
 from Framework.NN import NN
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 pygame.init()
+placeholder = st.empty()
+st.title("Car Simulator")
 
 track2 = [[(134, 555), (135, 143), (193, 95), (576, 100), (644, 159), (624, 546), (567, 599), (190, 599), (135, 556)],[(45, 560), (50, 140), (181, 5), (567, 10), (752, 139), (718, 545), (587, 693), (188, 687), (46, 563)]]
 checkpoints2 = [[(134, 378), (46, 381)], [(135, 317), (51, 317)], [(135, 256), (50, 253)], [(133, 199), (52, 200)], [(136, 146), (51, 138)], [(168, 113), (109, 79)], [(190, 91), (183, 7)], [(242, 90), (237, 6)], [(285, 93), (283, 8)], [(327, 97), (330, 8)], [(372, 97), (378, 11)], [(415, 99), (421, 9)], [(462, 96), (471, 14)], [(518, 97), (528, 13)], [(572, 101), (592, 31)], [(606, 124), (643, 69)], [(640, 156), (694, 105)], [(648, 185), (743, 181)], [(646, 220), (739, 230)], [(643, 279), (738, 295)], [(638, 332), (729, 351)], [(633, 399), (728, 417)], [(630, 476), (720, 485)], [(623, 531), (712, 542)], [(607, 569), (664, 606)], [(574, 595), (589, 688)], [(518, 604), (522, 691)], [(446, 599), (454, 690)], [(390, 602), (393, 691)], [(326, 598), (323, 689)], [(247, 598), (243, 690)], [(190, 598), (180, 686)], [(159, 580), (113, 623)], [(131, 554), (48, 555)],[(132, 492), (46, 499)], [(128, 436), (45, 431)]]
@@ -37,7 +42,7 @@ class CarSimulator:
 
     def __init__(self, draw=False, slow=False,Display = False):
         if(Display):
-            self.screen = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
+            self.screen = pygame.Surface((self.WIDTH, self.HEIGHT))
             pygame.display.set_caption("Drivable Rectangle")
             self.clock = pygame.time.Clock()
             self.car_image = pygame.image.load("../Environment/car_red_1.png")
@@ -190,7 +195,10 @@ class CarSimulator:
         self.draw_car()
         self.draw_rays()
         self.draw_text(frames, output, generation, id, speciesid, species_infotext, genome)
-        pygame.display.flip()
+        arr = pygame.surfarray.array3d(self.screen)
+        arr = np.rot90(arr, 1)
+        arr = np.flip(arr, 0)
+        placeholder.image(arr, channels="RGB", use_container_width=True)
 
     def draw_track(self):
         for track in self.track_points:
