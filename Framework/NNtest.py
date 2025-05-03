@@ -19,19 +19,19 @@ GOD.create_initial_genomes(Universe)
 # creature.draw_network_newwindow()
 # for i in range(10000):
 #     GOD.Evaluate_and_Mutate(Universe)
-for i in range(10000):
-    start_time = time.time()
-    GOD.Evaluate_and_Mutate(Universe,True,Visualize=False)
-    if i%10 == 0:
-        Universe.save_genomes(f"genomes_generationstill{i}.pkl")
-    print(f"Generation {i+1} completed in time: {time.time() - start_time} seconds")
-end_time = time.time()
-print(f"Time taken to run Evaluate_and_Mutate: {end_time - start_time} seconds")
+# for i in range(10000):
+#     start_time = time.time()
+#     GOD.Evaluate_and_Mutate(Universe,True,Visualize=False)
+#     # if i%10 == 0:
+#         # Universe.save_genomes(f"genomes_generationstill{i}.pkl")
+#     print(f"Generation {i+1} completed in time: {time.time() - start_time} seconds")
+# end_time = time.time()
+# print(f"Time taken to run Evaluate_and_Mutate: {end_time - start_time} seconds")
 
 # Universe.save_genomes("genomes.pkl")
-# Universe2 = Globals(10,6,POPULATIONS)
-# Universe2.load_genomes("genomes.pkl")
-# GOD.Evaluate_and_Mutate(Universe2,False)
+Universe2 = Globals(10,6,POPULATIONS)
+Universe2.load_genomes("./Populations/genomes_generationstill30.pkl")
+GOD.Evaluate_and_Mutate(Universe2,False,Visualize=False,Train = False)
 
 
 # start_time = time.time()
@@ -45,5 +45,6 @@ print(f"Time taken to run Evaluate_and_Mutate: {end_time - start_time} seconds")
 # output = my_creaturenn(inpu)
 # print(output)
 # x = sum(output)
+
 # x.backward()
 # print(inpu.grad)

@@ -220,10 +220,13 @@ class GOD:
 		score = sim.run(genomenn,generation,framecap,ind,genome,indx,specieinfotex)
 		pipe.send(score)
 
-	def Evaluate_and_Mutate(globals: Globals,Do_multiprocessing = False , Visualize = False):
+	def Evaluate_and_Mutate(globals: Globals,Do_multiprocessing = False , Visualize = False , Train = True):
 		'''
 			GOD said, "Let there be evaluation!"
 		'''
+		if not Train:
+			mainSim.slow = True	
+			mainSim.draw = True
 		global specieinfotex
 		Representative_genome = [globals.genomes[0]]
 		for i in globals.genomes:
@@ -270,6 +273,7 @@ class GOD:
 				spec_fitness = 0
 				for indx,j in enumerate(speca):
 					species[ind][indx] = [pipe_list[ind][indx][0].recv(),species[ind][indx]]
+					pipe_list[ind][indx][0].close()
 					spec_fitness += species[ind][indx][0]/len(speca)
 				species[ind] = [spec_fitness, species[ind]]
 		else:
@@ -280,6 +284,8 @@ class GOD:
 						framecap = 50 + 20 * (globals.current_generation//3)
 					else:
 						framecap = 1000 + 20 * (globals.current_generation//3)
+					if(not Train):
+						framecap = 1000
 					score = mainSim.run(NN(j, grad = False), globals.current_generation, genome = j,id = indx,speciesid = ind,species_infotext=specieinfotex , framecap=framecap)
 					speca[indx] = [score/len(speca), speca[indx]]
 					species_fitness[ind] += score/len(speca)
